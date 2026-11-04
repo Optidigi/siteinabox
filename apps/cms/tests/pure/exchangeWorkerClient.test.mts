@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { ExchangeWorkerClient, ExchangeWorkerIndeterminateWriteError } from "../../src/lib/microsoftMailProvisioning/exchangeWorker.ts"
+import { ExchangeWorkerClient, ExchangeWorkerError, ExchangeWorkerIndeterminateWriteError } from "../../src/lib/microsoftMailProvisioning/exchangeWorker.ts"
 
 test("Exchange worker client sends a narrowly scoped job over HTTPS", async () => {
   const sent: Request[] = []
@@ -51,11 +51,21 @@ test("worker readiness checks only the private service health endpoint", async (
     sharedSecret: "x".repeat(40),
     fetchImpl: async (input) => {
       requestUrl = String(input)
-      return Response.json({ healthy: true, protocolVersion: 1, moduleVersion: "3.10.1", dnsToolAvailable: true })
+      return Response.json({ healthy: true, protocolVersion: 2, moduleVersion: "3.10.1", dnsToolAvailable: true })
     },
   })
   const health = await client.health()
   assert.equal(new URL(requestUrl).pathname, "/health")
   assert.equal(health.healthy, true)
   assert.equal(health.moduleVersion, "3.10.1")
+})
+
+test("organization read access alone cannot satisfy workload capability verification",async()=>{
+ const client=new ExchangeWorkerClient({endpoint:"https://worker.test/jobs",sharedSecret:"s".repeat(40),fetchImpl:async()=>Response.json({operation:"verify_access",completed:true,accessVerified:true})})
+ await assert.rejects(client.execute({operation:"verify_access",partnerUserPrincipalName:"operator@partner.test",customerTenantId:"00000000-0000-4000-8000-000000000002",customerOrganizationDomain:"fixture.onmicrosoft.com",domain:"fixture.test",accessToken:"synthetic",requiredOperations:["get_dkim_targets","enable_dkim"]}),ExchangeWorkerIndeterminateWriteError)
+})
+
+test("an old read-only worker protocol cannot pass release readiness",async()=>{
+ const client=new ExchangeWorkerClient({endpoint:"https://worker.test/jobs",sharedSecret:"s".repeat(40),fetchImpl:async()=>Response.json({healthy:true,protocolVersion:1,moduleVersion:"3.10.1",dnsToolAvailable:true})})
+ await assert.rejects(client.health(),error=>error instanceof ExchangeWorkerError && error.code === "worker_unhealthy")
 })

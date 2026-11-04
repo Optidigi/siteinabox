@@ -47,7 +47,7 @@ try {
     } catch (error) { if (attempt === 29) throw error; await setTimeout(500) }
   }
   const catalog = JSON.parse(await readFile("ops/exchange-worker/modules.json", "utf8"))
-  if (!health?.healthy || health.protocolVersion !== 1 || !health.dnsToolAvailable || health.moduleVersion !== catalog.find(item => item.name === "ExchangeOnlineManagement")?.version) throw new Error("Worker health differs from qualified module/runtime")
+  if (!health?.healthy || health.protocolVersion !== 2 || !health.dnsToolAvailable || health.moduleVersion !== catalog.find(item => item.name === "ExchangeOnlineManagement")?.version) throw new Error("Worker health differs from qualified module/runtime")
   const denied = docker(["exec", container, "curl", "--silent", "--max-time", "2", "--output", "/dev/null", "--write-out", "%{http_code}", "http://127.0.0.1:8081/health"], true)
   if (denied !== "401") throw new Error("Worker accepted unauthenticated access")
   const runtimeInventory = docker(["exec", container, "pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-File", "/app/Get-WorkerRuntimeInventory.ps1"], true)

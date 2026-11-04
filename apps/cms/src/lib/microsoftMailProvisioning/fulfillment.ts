@@ -1,3 +1,8 @@
+import { MicrosoftApiError } from "./microsoft"
+import { MicrosoftTokenRequestError } from "./microsoftAuth"
+import { ExchangeWorkerError } from "./exchangeWorker"
+import { mailAuthorityCurrent } from "./mailAuthority"
+import { requireManagedMailBootstrap } from "./managedBootstrap"
 import { microsoftMailProviderConsent } from "./consentIdentity"
 import { requireMailDomainEnabled } from "./rollout"
 import { allocateMicrosoftInitialDomain, MicrosoftTenantDiscoveryError } from "./tenantDiscovery"
@@ -13,7 +18,7 @@ import { PayloadMicrosoftMailProvisioningStore } from "./payloadStore"
 import { createPax8MailClient } from "./pax8Preflight"
 import { Pax8ApiError, Pax8IndeterminateWriteError, type Pax8OrderInput } from "./pax8"
 import { inspectMicrosoftMailReadiness } from "./readiness"
-import { createMicrosoftMailLivePorts } from "./livePorts"
+import { createMicrosoftMailLivePorts, createMicrosoftMailLiveClients } from "./livePorts"
 import { advanceMicrosoftMailProvisioning, type MicrosoftMailProvisioningRun } from "./workflow"
 import type { FulfillOrderResult } from "../payments/fulfillOrder"
 import { mailProvisioningIntentHash } from "./model"
@@ -49,7 +54,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
   if (order.state === "fulfilled") return { status: "fulfilled", orderId: order.id }
   const tenant = await payload.findByID({ collection: "tenants", id: tenantId, depth: 0, overrideAccess: true })
   if (tenant.status !== "active") return { status: "waiting", orderId: order.id, message: "The customer workspace is not active." }
-  if (process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness().readyForLiveProvisioning) {
+  if (process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness(process.env, quote.operation === "initial" ? "initial" : "existing").readyForLiveProvisioning) {
     return { status: "waiting", orderId: order.id, message: "Email provider configuration is incomplete." }
   }
   try { requireMailDomainEnabled(service.domain); requireLiveMailWritesAllowed() } catch { return { status: "waiting", orderId: order.id, message: "Live email writes are disabled by the commerce release gate." } }
@@ -72,6 +77,19 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
     const save = async (patch: Partial<MicrosoftMailProvisioningRun>) => { run = await store.update(run!.id, { ...patch, updatedAt: new Date().toISOString() }); return run }
     const client = createPax8MailClient()
     try {
+      if (quote.operation === "initial" && !run.data.pax8OrderId) {
+        if ([run.data.pax8OrderSubmissionState, run.data.pax8CompanyCreationState].some(state => state === "started" || state === "uncertain")) throw new Pax8IndeterminateWriteError("initial provisioning")
+        try {
+          const live = createMicrosoftMailLiveClients({payload})
+          if (!await live.microsoft.partnerGroupMembershipVerified(live.securityGroupId)) throw new Error("MICROSOFT_PARTNER_GROUP_REQUIRED")
+          await live.exchange.health()
+          if (!await requireManagedMailBootstrap().ready()) throw new Error("MAIL_BOOTSTRAP_NOT_QUALIFIED")
+        } catch (error) {
+          const code = error instanceof MicrosoftApiError ? "MICROSOFT_PARTNER_GROUP_VERIFICATION_REQUIRED" : error instanceof MicrosoftTokenRequestError ? "MICROSOFT_PARTNER_CONNECTION_REQUIRED" : error instanceof ExchangeWorkerError ? "EXCHANGE_WORKER_NOT_READY" : error instanceof Error && ["MICROSOFT_PARTNER_GROUP_REQUIRED", "MAIL_BOOTSTRAP_NOT_QUALIFIED"].includes(error.message) ? error.message : "MAIL_PROVIDER_READINESS_REQUIRED"
+          await save({issueCode:code})
+          return { status: "waiting", orderId: order.id, message: "Provider authority prerequisites are not ready. No new supplier purchase will be made." }
+        }
+      }
       if (quote.operation === "initial" && !service.microsoftTenantId && !run.data.pax8OrderId && (!run.data.bootstrapInitialDomainAbsentAt || !/^[a-z0-9]{1,27}\.onmicrosoft\.com$/.test(String(run.data.bootstrapInitialDomain ?? "")))) {
         if (["started", "uncertain"].includes(String(run.data.pax8OrderSubmissionState))) throw new Pax8IndeterminateWriteError("order submission")
         const allocation = await allocateMicrosoftInitialDomain({ tenantId, serviceId: service.id, domain: service.domain })
@@ -102,7 +120,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         await save({ state: "tenant_pending", data: { ...run.data, pax8CompanyId: service.pax8CompanyId, customerTenantId: service.microsoftTenantId,
           customerOrganizationDomain: service.microsoftInitialDomain, appConsentVersion: previous.data.appConsentVersion, mcaAccepted: previous.data.mcaAccepted,
           gdapRelationshipId: previous.data.gdapRelationshipId, gdapAccessAssignmentId: previous.data.gdapAccessAssignmentId,
-          targetQuantity: quote.targetQuantity } })
+          targetQuantity: quote.targetQuantity, autoProvisionAuthorized: true } })
       }
       if (!run.data.pax8CompanyId) {
         if (run.data.pax8CompanyCreationState === "started") throw new Pax8IndeterminateWriteError("company creation")
@@ -125,7 +143,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         await save({ state: "tenant_pending", data: { ...run.data, pax8CompanyId: companyId, pax8CompanyCreationState: "complete" } })
       }
       if (quote.operation === "seats" && run.data.pax8QuantityUpdateConfirmed !== true) {
-        if (run.data.pax8QuantityUpdateState === "started") throw new Pax8IndeterminateWriteError("subscription quantity update")
+        if (["started", "uncertain"].includes(String(run.data.pax8QuantityUpdateState))) throw new Pax8IndeterminateWriteError("subscription quantity update")
         if (!service.pax8SubscriptionId) throw new Error("PAX8_SUBSCRIPTION_REQUIRED")
         const before = await client.getSubscription(service.pax8SubscriptionId)
         if (before.companyId !== service.pax8CompanyId || before.productId !== quote.productId || before.quantity !== quote.baseQuantity) throw new Error("PAX8_SEAT_COUNT_CHANGED")
@@ -139,10 +157,15 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const rates = Array.isArray(annual?.rates) ? annual.rates.map(record) : []
         const rate = rates.filter(value => Number(value.startQuantityRange ?? 0) <= quote.targetQuantity && (value.endQuantityRange == null || Number(value.endQuantityRange) >= quote.targetQuantity)).sort((a,b) => Number(b.startQuantityRange ?? 0) - Number(a.startQuantityRange ?? 0))[0]
         if (!rate || mailProviderAnnualCostMinor(rate.partnerBuyRate) > quote.providerAnnualUnitCostMinor) throw new Error("PAX8_COST_CHANGED_AFTER_PAYMENT")
+        // Existing tenants can prove workload authority before a billable seat increase.
+        run = await advanceMicrosoftMailProvisioning({ run, store, ports: createMicrosoftMailLivePorts({ payload }), authorityOnly: true })
+        if (["failed", "manual_review", "cancelled"].includes(run.state) || !run.completedSteps.includes("gdap") || !run.completedSteps.includes("application_consent") || !mailAuthorityCurrent(run.data.mailAuthority, String(run.data.customerTenantId))) {
+          return { status: ["failed", "manual_review"].includes(run.state) ? "failed" : "waiting", orderId: order.id, message: "Verifying Microsoft authority before increasing supplier licences." }
+        }
         await save({ data: { ...run.data, pax8QuantityUpdateState: "started" } })
         const changed = await client.updateSubscriptionQuantity(service.pax8SubscriptionId, quote.targetQuantity)
         if (changed.quantity !== quote.targetQuantity) throw new Pax8IndeterminateWriteError("subscription quantity confirmation")
-        await save({ state: "subscription_pending", completedSteps: ["tenant_bootstrap", "subscription", "mca_acceptance", "domain_verification", "dkim_prepare", "dns_prepare", "dns_cutover", "dkim_enable"],
+        await save({ state: "consent_pending", completedSteps: [...run.completedSteps, "provider_company", "subscription", "mca_acceptance", "domain_verification", "dkim_prepare", "dns_prepare", "dns_cutover", "dkim_enable"],
           data: { ...run.data, pax8QuantityUpdateState: "complete", pax8QuantityUpdateConfirmed: true, autoProvisionAuthorized: true,
             customerOrderAuthorized: true, targetQuantity: quote.targetQuantity,
             pax8OrderLineItems: [{ productId: quote.productId, subscriptionId: changed.id, quantity: quote.targetQuantity, billingTerm: "Annual" }] } })
@@ -182,7 +205,7 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         const request = !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo
           ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo }
           : run.request
-        await save({ state: "subscription_pending", completedSteps: ["tenant_bootstrap", "subscription"], request,
+        await save({ state: "subscription_pending", completedSteps: ["provider_company", "subscription"], request,
           data: { ...run.data, pax8OrderSubmissionState: "complete", pax8OrderId: providerOrder.id, pax8OrderLineItems: providerOrder.lineItems,
             autoProvisionAuthorized: true, customerOrderAuthorized: true, routingHash: quote.routingHash,
             ...(service.microsoftTenantId ? { customerTenantId: service.microsoftTenantId } : {}),

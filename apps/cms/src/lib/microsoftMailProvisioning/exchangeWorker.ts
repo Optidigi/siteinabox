@@ -13,6 +13,7 @@ export type ExchangeWorkerRequest = {
   forwardTo?: string
   targetAddress?: string
   mailboxAddresses?: string[]
+  requiredOperations?: ExchangeWorkerOperation[]
 }
 
 export type ExchangeWorkerResult = {
@@ -25,12 +26,13 @@ export type ExchangeWorkerResult = {
   aliasTarget?: string
   mailboxesReady?: boolean
   accessVerified?: boolean
+  capabilitiesVerified?: boolean
   dkimDnsReady?: boolean
   dkimEnabled?: boolean
   dkimRecords?: Array<{ selector: string; target: string }>
 }
 
-export type ExchangeWorkerHealth = { healthy: boolean; protocolVersion: 1; moduleVersion: string; dnsToolAvailable: boolean }
+export type ExchangeWorkerHealth = { healthy: boolean; protocolVersion: 2; moduleVersion: string; dnsToolAvailable: boolean }
 
 export function exchangeWorkerEndpointAllowed(value: string): boolean {
   try {
@@ -127,7 +129,7 @@ export class ExchangeWorkerClient {
       request.operation === "ensure_info_alias" && (result.alias !== request.infoAddress || result.aliasTarget !== request.targetAddress) ||
       request.operation === "ensure_info_forward" && (result.sharedMailbox !== request.infoAddress || result.forwardingAddress !== request.forwardTo) ||
       request.operation === "verify_mailboxes" && typeof result.mailboxesReady !== "boolean" ||
-      request.operation === "verify_access" && result.accessVerified !== true ||
+      request.operation === "verify_access" && (result.accessVerified !== true || result.capabilitiesVerified !== true) ||
       request.operation === "enable_dkim" && !(result.dkimEnabled === true || result.dkimEnabled === false && result.dkimDnsReady === false) ||
       request.operation === "get_dkim_targets" && (!Array.isArray(result.dkimRecords) || result.dkimRecords.length !== 2 || !["selector1", "selector2"].every(selector =>
         (result.dkimRecords as unknown[]).some(value => value && typeof value === "object" && "selector" in value && value.selector === selector && "target" in value && typeof value.target === "string" && /^[a-z0-9_.-]{1,253}$/i.test(value.target))))) {
@@ -153,7 +155,7 @@ export class ExchangeWorkerClient {
     }
     let body: unknown = null
     try { body = await response.json() as unknown } catch { /* untrusted worker response */ }
-    if (!response.ok || !body || typeof body !== "object" || !("healthy" in body) || body.healthy !== true || !("protocolVersion" in body) || body.protocolVersion !== 1 || !("dnsToolAvailable" in body) || body.dnsToolAvailable !== true || !("moduleVersion" in body) || typeof body.moduleVersion !== "string") {
+    if (!response.ok || !body || typeof body !== "object" || !("healthy" in body) || body.healthy !== true || !("protocolVersion" in body) || body.protocolVersion !== 2 || !("dnsToolAvailable" in body) || body.dnsToolAvailable !== true || !("moduleVersion" in body) || typeof body.moduleVersion !== "string") {
       throw new ExchangeWorkerError("worker_unhealthy", response.status)
     }
     return body as ExchangeWorkerHealth

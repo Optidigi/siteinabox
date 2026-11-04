@@ -1,11 +1,21 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { evaluateMailAuthority, requiredMailRoleIds } from "../../src/lib/microsoftMailProvisioning/mailAuthority.ts"
 import type { Payload } from "payload"
 import { createMicrosoftMailLivePorts } from "../../src/lib/microsoftMailProvisioning/livePorts.ts"
 import { advanceMicrosoftMailProvisioning, type MicrosoftMailProvisioningRun, type MicrosoftMailProvisioningStore } from "../../src/lib/microsoftMailProvisioning/workflow.ts"
 
 const response = (value: unknown, status = 200) => Response.json(value, { status })
 const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+
+const groupResponse = (url: URL, id: string): Response | null => url.pathname.endsWith("/me/transitiveMemberOf/microsoft.graph.group")
+ ? response({value:[{id,securityEnabled:true},{id:"native-admin-agents",displayName:"AdminAgents",securityEnabled:true}]}) : null
+
+const grantResponse = (url: URL, appId: string, granted = true): Response | null => {
+ if (url.pathname.endsWith("/servicePrincipals")) return response({ value: [{id:"client-sp",appId},{id:"graph-sp",appId:"00000003-0000-0000-c000-000000000000"},{id:"exo-sp",appId:"00000002-0000-0ff1-ce00-000000000000"}] })
+ if (url.pathname.endsWith("/oauth2PermissionGrants")) return response({ value: granted ? [{clientId:"client-sp",resourceId:"graph-sp",consentType:"AllPrincipals",scope:"Directory.Read.All Organization.Read.All Domain.ReadWrite.All User.ReadWrite.All LicenseAssignment.ReadWrite.All"},{clientId:"client-sp",resourceId:"exo-sp",consentType:"AllPrincipals",scope:"Exchange.Manage"}] : [] })
+ return null
+}
 
 class MemoryStore implements MicrosoftMailProvisioningStore {
   run: MicrosoftMailProvisioningRun
@@ -58,8 +68,8 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
       MICROSOFT_PARTNER_APP_CLIENT_ID: "partner-app-id",
       MICROSOFT_PARTNER_APP_CLIENT_SECRET: "partner-secret",
       MICROSOFT_PARTNER_APP_REDIRECT_URI: "https://admin.siteinabox.nl/operations/microsoft-mail/consent/callback",
-      MICROSOFT_GDAP_ROLE_DEFINITION_IDS: "11111111-1111-1111-1111-111111111111",
-      MICROSOFT_PARTNER_SECURITY_GROUP_ID: "22222222-2222-2222-2222-222222222222",
+      MICROSOFT_GDAP_ROLE_DEFINITION_IDS: requiredMailRoleIds.join(","),
+      MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID: "22222222-2222-2222-2222-222222222222",
       MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64"),
       PAX8_CLIENT_ID: "pax8-client",
       PAX8_CLIENT_SECRET: "pax8-secret",
@@ -86,9 +96,12 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
         throw new Error(`Unexpected Pax8 mock request ${method} ${url.pathname}`)
       }
       if (url.hostname === "graph.microsoft.com") {
+        const group = groupResponse(url, String(env.MICROSOFT_PARTNER_SECURITY_GROUP_ID)); if (group) return group
+        const grants = grantResponse(url, String(env.MICROSOFT_PARTNER_APP_CLIENT_ID))
+        if (grants) return grants
         const pathname = decodeURIComponent(url.pathname)
-        if (pathname.endsWith("/tenantRelationships/delegatedAdminRelationships/gdap-1")) return response({ id: "gdap-1", status: "active", customer: { tenantId: "00000000-0000-0000-0000-000000000002" }, accessDetails: { unifiedRoles: [{ roleDefinitionId: env.MICROSOFT_GDAP_ROLE_DEFINITION_IDS }] } })
-        if (pathname.endsWith("/accessAssignments") || pathname.endsWith("/accessAssignments/gdap-assignment-1")) return response({ id: "gdap-assignment-1", status: "active", accessContainer: { accessContainerId: env.MICROSOFT_PARTNER_SECURITY_GROUP_ID, accessContainerType: "securityGroup" }, accessDetails: { unifiedRoles: [{ roleDefinitionId: env.MICROSOFT_GDAP_ROLE_DEFINITION_IDS }] } })
+        if (pathname.endsWith("/tenantRelationships/delegatedAdminRelationships/gdap-1")) return response({ id: "gdap-1", status: "active", customer: { tenantId: "00000000-0000-0000-0000-000000000002" }, accessDetails: { unifiedRoles: String(env.MICROSOFT_GDAP_ROLE_DEFINITION_IDS).split(",").map(roleDefinitionId=>({roleDefinitionId})) } })
+        if (pathname.endsWith("/accessAssignments") || pathname.endsWith("/accessAssignments/gdap-assignment-1")) return response({ id: "gdap-assignment-1", status: "active", accessContainer: { accessContainerId: env.MICROSOFT_PARTNER_SECURITY_GROUP_ID, accessContainerType: "securityGroup" }, accessDetails: { unifiedRoles: String(env.MICROSOFT_GDAP_ROLE_DEFINITION_IDS).split(",").map(roleDefinitionId=>({roleDefinitionId})) } })
         if (pathname.endsWith("/organization")) return response({ value: [{ id: "00000000-0000-0000-0000-000000000002", displayName: "Tap2case", verifiedDomains: [{ name: "tap2case.onmicrosoft.com", isInitial: true }] }] })
         if (pathname.endsWith("/domains/tap2case.nl")) return response({ id: "tap2case.nl", isVerified: true, isDefault: false })
         if (pathname.endsWith("/verificationDnsRecords")) return response({ value: [] })
@@ -130,7 +143,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
         const job = JSON.parse(String(init?.body ?? "{}")) as { operation: string }
         workerOperations.push(job.operation)
         if (job.operation === "enable_dkim" && !dkimReady) { dkimReady = true; return response({ operation: job.operation, completed: true, dkimEnabled: false, dkimDnsReady: false }) }
-        if (job.operation === "verify_access") return response({ operation: job.operation, completed: true, accessVerified: true })
+        if (job.operation === "verify_access") return response({ operation: job.operation, completed: true, accessVerified: true, capabilitiesVerified: true })
         if (job.operation === "verify_mailboxes") return response({ operation: job.operation, completed: true, mailboxesReady })
         if (job.operation === "ensure_info_shared") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", sharedMailboxMembers: ["ardi@tap2case.nl", "aslan@tap2case.nl"] })
         if (job.operation === "ensure_info_forward") return response({ operation: job.operation, completed: true, sharedMailbox: "info@tap2case.nl", forwardingAddress: "info@amapromotions.nl" })
@@ -166,7 +179,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
       request: { ...request, ...(sharedInbox ? { infoSharedMailbox: true, retainInfoForward: false, infoForwardTo: null } : {}), mailboxUsers: request.mailboxUsers.map(user => ({ ...user, setupEmail: sharedRecipient ? "owner.setup@example.org" : user.setupEmail })) },
       state: "subscription_pending",
       currentStep: "mca_acceptance",
-      completedSteps: ["tenant_bootstrap", "subscription"],
+      completedSteps: ["provider_company", "subscription"],
       data: {
         pax8CompanyId: "pax8-company-1",
         pax8OrderId: "pax8-order-1",
@@ -237,7 +250,7 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
 
 it("discovers a freshly ordered tenant only after absence evidence and matching partner delegation", async () => {
  const customerId="12345678-1234-4234-8234-123456789abc"
- const env: NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
+ const env: NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
  let associated=false
  const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"token",fetchImpl:async input=>{
   const url=new URL(String(input))
@@ -246,7 +259,7 @@ it("discovers a freshly ordered tenant only after absence evidence and matching 
   throw new Error("Unexpected bootstrap call")
  }})
  const now=new Date().toISOString()
- const run:MicrosoftMailProvisioningRun={id:99,idempotencyKey:"new-tenant",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"subscription_pending",currentStep:"tenant_identity",completedSteps:["tenant_bootstrap","subscription"],data:{pax8CompanyId:"company",pax8OrderId:"order"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ const run:MicrosoftMailProvisioningRun={id:99,idempotencyKey:"new-tenant",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"subscription_pending",currentStep:"tenant_identity",completedSteps:["provider_company","subscription"],data:{pax8CompanyId:"company",pax8OrderId:"order"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
  assert.deepEqual(await ports.tenant_identity({run,request}),{kind:"manual_review",code:"MICROSOFT_TENANT_BOOTSTRAP_EVIDENCE_REQUIRED"})
  run.data={...run.data,bootstrapInitialDomain:"tap2case.onmicrosoft.com",bootstrapInitialDomainAbsentAt:now}
  const pending=await ports.tenant_identity({run,request})
@@ -267,7 +280,7 @@ it("discovers a freshly ordered tenant only after absence evidence and matching 
 
 
 it("does not resend a setup credential after it was already claimed",async()=>{
- const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret",MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY:"synthetic-key",SITE_URL:"https://admin.test"}
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret",MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY:"synthetic-key",SITE_URL:"https://admin.test"}
  const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"token",createSetupTokenImpl:async()=>null,sendEmailImpl:async()=>{throw new Error("Consumed credentials must not be resent")}})
  const now=new Date().toISOString()
  const user=request.mailboxUsers[0]!
@@ -279,10 +292,10 @@ it("does not resend a setup credential after it was already claimed",async()=>{
  assert.deepEqual(result.data?.setupEmailStates,{[user.userPrincipalName]:"sent"})
 })
 
-it("reuses provider delegation and its existing group assignment instead of asking the customer again",async()=>{
+it("retains partial provider assignment but never mistakes it for full mail authority",async()=>{
  const ids=["fe930be7-5e62-47db-91af-98c3a49a38b1","4d6ac14f-3453-41d0-bef9-a3e0c569773a","e8611ab8-c189-46e8-94e1-60213ab1f814"]
  const customerId="12345678-1234-4234-8234-123456789abc"
- const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"requested-but-not-granted",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"requested-but-not-granted",MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
  const relationship={id:"provider-relationship",status:"active",customer:{tenantId:customerId},accessDetails:{unifiedRoles:ids.map(roleDefinitionId=>({roleDefinitionId}))}}
  const assignment={id:"existing-assignment",status:"active",accessContainer:{accessContainerId:"group",accessContainerType:"securityGroup"},accessDetails:{unifiedRoles:[...ids,"existing-extra-role"].map(roleDefinitionId=>({roleDefinitionId}))}}
  let writes=0
@@ -298,9 +311,8 @@ it("reuses provider delegation and its existing group assignment instead of aski
  const run:MicrosoftMailProvisioningRun={id:101,idempotencyKey:"provider-discovery",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"consent_pending",currentStep:"gdap",completedSteps:[],data:{customerTenantId:customerId,autoProvisionAuthorized:true},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
  for(let attempt=0;attempt<3;attempt++){
   const result=await ports.gdap({run,request})
-  if(result.kind==="manual_review")throw new Error(result.code)
   run.data={...run.data,...result.data}
-  if(attempt===2)assert.equal(result.kind,"complete")
+  if(attempt===2) { assert.equal(result.kind,"manual_review"); if(result.kind==="manual_review")assert.equal(result.code,"MAIL_BOOTSTRAP_NOT_QUALIFIED") }
  }
  assert.equal(run.data.gdapRelationshipId,relationship.id)
  assert.equal(run.data.gdapAccessAssignmentId,assignment.id)
@@ -310,7 +322,7 @@ it("reuses provider delegation and its existing group assignment instead of aski
 
 it("advances provider-handled agreement setup from recorded acceptance and verified fulfillment without claiming upstream attestation",async()=>{
  const customerId="12345678-1234-4234-8234-123456789abc"
- const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
  let active=false,companyMatches=true
  const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"token",fetchImpl:async input=>{
   const url=new URL(String(input))
@@ -346,22 +358,24 @@ it("advances provider-handled agreement setup from recorded acceptance and verif
 
 it("preserves accepted resource grants while Exchange consent and read access propagate", async () => {
  const customerId="12345678-1234-4234-8234-123456789abc"
- const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"secret",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role",MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group",CLOUDFLARE_API_TOKEN:"token",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"x".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"secret"}
  let graphWrites=0,exchangeWrites=0,readReady=false
  const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,partnerUserPrincipalName:"operator@partner.onmicrosoft.com",tokenProvider:async()=>"token",fetchImpl:async(input,init)=>{
   const url=new URL(String(input))
+  const group=groupResponse(url,"group");if(group)return group
   if(url.hostname==="api.partnercenter.microsoft.com"){
    const body=object(JSON.parse(String(init?.body)))
    const grant=object((body.applicationGrants as unknown[])[0])
    if(grant.enterpriseApplicationId==="00000003-0000-0000-c000-000000000000"){graphWrites++;return response({})}
-   exchangeWrites++;return response({},exchangeWrites===1?400:200)
+   exchangeWrites++;return response(exchangeWrites===1?{isRetryable:true}:{},exchangeWrites===1?400:200)
   }
+  if(url.hostname==="graph.microsoft.com"){const grant=grantResponse(url,"app",exchangeWrites>=2);if(grant)return grant}
   if(url.hostname==="graph.microsoft.com")return response({value:[{id:customerId,verifiedDomains:[{name:"tap2case.onmicrosoft.com",isInitial:true}]}]})
-  if(url.hostname==="worker.test")return readReady?response({operation:"verify_access",completed:true,accessVerified:true}):response({error:"temporarily_unavailable"},503)
+  if(url.hostname==="worker.test")return readReady?response({operation:"verify_access",completed:true,accessVerified:true,capabilitiesVerified:true}):response({error:"temporarily_unavailable"},503)
   throw new Error("Unexpected consent propagation request")
  }})
  const now=new Date().toISOString()
- const run:MicrosoftMailProvisioningRun={id:103,idempotencyKey:"resource-retry",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"consent_pending",currentStep:"application_consent",completedSteps:[],data:{customerTenantId:customerId,autoProvisionAuthorized:true,bootstrapInitialDomain:"tap2case.onmicrosoft.com"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ const run:MicrosoftMailProvisioningRun={id:103,idempotencyKey:"resource-retry",mode:"live",tenantId:7,domain:request.domain,tenantPrefix:request.tenantPrefix,request,state:"consent_pending",currentStep:"application_consent",completedSteps:[],data:{mailAuthority:evaluateMailAuthority({tenantId:customerId,relationshipTenantId:customerId,relationshipId:"r",relationshipStatus:"active",assignmentId:"a",assignmentStatus:"active",groupId:"g",assignedGroupId:"g",approvedRoleIds:requiredMailRoleIds,assignedRoleIds:requiredMailRoleIds}),customerTenantId:customerId,autoProvisionAuthorized:true,bootstrapInitialDomain:"tap2case.onmicrosoft.com"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
  async function advance(){const result=await ports.application_consent({run,request});if(result.kind!=="manual_review")run.data={...run.data,...result.data};return result}
  assert.equal((await advance()).kind,"waiting")
  assert.equal((await advance()).kind,"waiting")
@@ -373,4 +387,68 @@ it("preserves accepted resource grants while Exchange consent and read access pr
  assert.equal(graphWrites,1,"a confirmed Graph grant must not be submitted again")
  assert.equal(exchangeWrites,2)
  assert.equal(run.data.appConsentVerified,true)
+})
+
+it("stops a permanent consent refusal immediately without labelling it propagation", async () => {
+ const env: NodeJS.ProcessEnv = { NODE_ENV:"test", MICROSOFT_PARTNER_TENANT_ID:"partner", MICROSOFT_PARTNER_APP_CLIENT_ID:"app", MICROSOFT_PARTNER_APP_CLIENT_SECRET:"synthetic", MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback", MICROSOFT_GDAP_ROLE_DEFINITION_IDS:"role", MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"group", CLOUDFLARE_API_TOKEN:"synthetic", CLOUDFLARE_ACCOUNT_ID:"account", EXCHANGE_WORKER_URL:"https://worker.test/jobs", EXCHANGE_WORKER_SHARED_SECRET:"s".repeat(40), PAX8_CLIENT_ID:"id", PAX8_CLIENT_SECRET:"synthetic" }
+ const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"synthetic",fetchImpl:async(input)=>groupResponse(new URL(String(input)),"group")??response({code:403,errorName:"Forbidden",isRetryable:false},403)})
+ const now=new Date().toISOString()
+ const run: MicrosoftMailProvisioningRun={id:1001,idempotencyKey:"permanent-consent-denial",mode:"live",tenantId:7,domain:"fixture.test",tenantPrefix:"fixture",request,state:"consent_pending",currentStep:"application_consent",completedSteps:[],data:{customerTenantId:"00000000-0000-4000-8000-000000000002",autoProvisionAuthorized:true},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ assert.deepEqual(await ports.application_consent({run,request}),{kind:"manual_review",code:"CUSTOMER_RECONSENT_REQUIRED"})
+})
+
+it("adopts actual customer-admin consent without repeating a Partner Center write", async()=>{
+ const customerId="00000000-0000-4000-8000-000000000002"
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"partner",MICROSOFT_PARTNER_APP_CLIENT_ID:"app",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"synthetic",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:requiredMailRoleIds.join(","),MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:"g",CLOUDFLARE_API_TOKEN:"synthetic",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://worker.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"s".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"synthetic"}
+ let grantVisible=false, writes=0
+ const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,partnerUserPrincipalName:"operator@partner.test",tokenProvider:async()=>"synthetic",fetchImpl:async(input,init)=>{
+  const url=new URL(String(input));const group=groupResponse(url,"g");if(group)return group;if(init?.method!=="GET"&&url.hostname!=="worker.test")writes++
+  const grant=grantResponse(url,"app",grantVisible);if(grant)return grant
+  if(url.pathname.endsWith("/organization"))return response({value:[{id:customerId,verifiedDomains:[{name:"fixture.onmicrosoft.com",isInitial:true}]}]})
+  if(url.hostname==="worker.test")return response({operation:"verify_access",completed:true,accessVerified:true,capabilitiesVerified:true})
+  throw Error("Unexpected provider write or request")
+ }})
+ const now=new Date().toISOString()
+ const authority=evaluateMailAuthority({tenantId:customerId,relationshipTenantId:customerId,relationshipId:"r",relationshipStatus:"active",assignmentId:"a",assignmentStatus:"active",groupId:"g",assignedGroupId:"g",approvedRoleIds:requiredMailRoleIds,assignedRoleIds:requiredMailRoleIds})
+ const run:MicrosoftMailProvisioningRun={id:1002,idempotencyKey:"local-consent",mode:"live",tenantId:7,domain:"fixture.test",tenantPrefix:"fixture",request,state:"consent_pending",currentStep:"application_consent",completedSteps:[],data:{mailAuthority:authority,customerTenantId:customerId,bootstrapInitialDomain:"fixture.onmicrosoft.com",autoProvisionAuthorized:true,managedAdminConsentGranted:true,appConsentResourceVersion:"microsoft-mail-app-grants-v2",appConsentSubmittedResources:["graph","exchange"],appConsentSubmittedAt:now},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ const pending=await ports.application_consent({run,request})
+ assert.equal(pending.kind,"waiting")
+ grantVisible=true
+ const complete=await ports.application_consent({run,request})
+ assert.equal(complete.kind,"complete")
+ if(complete.kind==="complete")assert.equal(object(complete.data?.mailAuthority).status,"ready")
+ assert.equal(writes,0)
+})
+
+it("creates one full-role request and independently verifies the worker's exact target delegation",async()=>{
+ const customerId="00000000-0000-4000-8000-000000000002",groupId="00000000-0000-4000-8000-000000000004"
+ const bootstrapRoles=["fe930be7-5e62-47db-91af-98c3a49a38b1","4d6ac14f-3453-41d0-bef9-a3e0c569773a","e8611ab8-c189-46e8-94e1-60213ab1f814"]
+ const env:NodeJS.ProcessEnv={NODE_ENV:"test",MICROSOFT_PARTNER_TENANT_ID:"00000000-0000-4000-8000-000000000001",MICROSOFT_PARTNER_APP_CLIENT_ID:"00000000-0000-4000-8000-000000000003",MICROSOFT_PARTNER_APP_CLIENT_SECRET:"synthetic",MICROSOFT_PARTNER_APP_REDIRECT_URI:"https://admin.test/callback",MICROSOFT_GDAP_ROLE_DEFINITION_IDS:requiredMailRoleIds.join(","),MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"native-admin-agents", MICROSOFT_PARTNER_SECURITY_GROUP_ID:groupId,CLOUDFLARE_API_TOKEN:"synthetic",CLOUDFLARE_ACCOUNT_ID:"account",EXCHANGE_WORKER_URL:"https://exchange.test/jobs",EXCHANGE_WORKER_SHARED_SECRET:"s".repeat(40),PAX8_CLIENT_ID:"id",PAX8_CLIENT_SECRET:"synthetic",MICROSOFT_MAIL_BOOTSTRAP_WORKER_URL:"https://bootstrap.test",MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET:"s".repeat(40),MICROSOFT_MAIL_AUTHORITY_QUALIFIED:"managed-admin-v1"}
+ let creates=0,workerRequests=0,fullReadback=0
+ const ports=createMicrosoftMailLivePorts({payload:{} as Payload,env,tokenProvider:async()=>"synthetic",fetchImpl:async(input,init)=>{
+  const url=new URL(String(input)),method=init?.method??"GET",path=url.pathname
+  if(url.hostname==="bootstrap.test"){
+   workerRequests++;assert.equal(method,"PUT")
+   const job=object(JSON.parse(String(init?.body)));assert.equal(job.targetRelationshipId,"full");assert.equal(job.sourceRelationshipId,"default");assert.equal("password"in job,false)
+   return response({protocol:"siab-managed-mail-authority-v1",jobId:job.id,binding:job.binding,phase:"complete",relationshipId:"full"})
+  }
+  if(path.endsWith("/delegatedAdminRelationships")&&method==="POST"){
+   creates++;const body=object(JSON.parse(String(init?.body)));assert.deepEqual(object(body.accessDetails).unifiedRoles,requiredMailRoleIds.map(roleDefinitionId=>({roleDefinitionId})));return response({id:"full"})
+  }
+  if(path.endsWith("/full/requests")){assert.equal(object(JSON.parse(String(init?.body))).action,"lockForApproval");return response({id:"request"})}
+  const full=path.includes("/full")
+  if(full)fullReadback++
+  const ids=full?requiredMailRoleIds:bootstrapRoles
+  const assignment={id:full?"full-assignment":"default-assignment",status:"active",accessContainer:{accessContainerId:groupId,accessContainerType:"securityGroup"},accessDetails:{unifiedRoles:ids.map(roleDefinitionId=>({roleDefinitionId}))}}
+  if(path.endsWith("/accessAssignments"))return response({value:[assignment]})
+  if(path.includes("/accessAssignments/"))return response(assignment)
+  return response({id:full?"full":"default",status:"active",customer:{tenantId:customerId},accessDetails:{unifiedRoles:ids.map(roleDefinitionId=>({roleDefinitionId}))}})
+ }})
+ const now=new Date().toISOString()
+ const run:MicrosoftMailProvisioningRun={id:1003,idempotencyKey:"bootstrap-integration",mode:"live",tenantId:7,domain:"fixture.test",tenantPrefix:"fixture",request,state:"consent_pending",currentStep:"gdap",completedSteps:[],data:{customerTenantId:customerId,bootstrapInitialDomain:"fixture.onmicrosoft.com",autoProvisionAuthorized:true,commerceOrderId:9,gdapRelationshipId:"default",gdapAccessAssignmentId:"default-assignment"},actionUrl:null,issueCode:null,createdAt:now,updatedAt:now}
+ let result
+ for(let n=0;n<4;n++){result=await ports.gdap({run,request});assert.notEqual(result.kind,"manual_review");run.data={...run.data,...result.data}}
+ assert.equal(result?.kind,"complete");assert.equal(object(run.data.mailAuthority).status,"delegation_ready")
+ assert.equal(creates,1);assert.equal(workerRequests,1);assert.ok(fullReadback>=2)
+ assert.deepEqual(run.data.appConsentSubmittedResources,["graph","exchange"])
 })

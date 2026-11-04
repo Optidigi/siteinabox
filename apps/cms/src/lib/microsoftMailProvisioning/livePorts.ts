@@ -7,11 +7,13 @@ import { MicrosoftMailClient, MicrosoftApiError, MICROSOFT_MAIL_APPLICATION_GRAN
 import { MicrosoftTokenRequestError } from "./microsoftAuth.ts"
 import { createPartnerTokenProvider } from "./partnerConnection.ts"
 import { CloudflareMailDnsClient } from "./cloudflare.ts"
-import { ExchangeWorkerClient } from "./exchangeWorker.ts"
+import { ExchangeWorkerClient, ExchangeWorkerError } from "./exchangeWorker.ts"
 import { planMicrosoftMailDns, type MailDnsRecord } from "./dns.ts"
 import { inspectExistingMailRouting } from "./infoRouting.ts"
 import { Pax8Client } from "./pax8.ts"
 import { discoverMicrosoftTenant, microsoftInitialDomainCandidate } from "./tenantDiscovery.ts"
+import { evaluateMailAuthority, requiredMailRoleIds, type MailAuthority } from "./mailAuthority.ts"
+import { ManagedMailBootstrapClient, createMailBootstrapJob } from "./managedBootstrap.ts"
 import { selectMailGdapRoles } from "./gdapCapabilities.ts"
 import { encryptMicrosoftMailSetupCredential } from "./setupCredentialCrypto.ts"
 import { createMicrosoftMailSetupToken } from "./setupTokenStore.ts"
@@ -88,6 +90,7 @@ export function createMicrosoftMailLiveClients(input: { payload?: Payload; env?:
   const microsoft = new MicrosoftMailClient({
     partnerTenantId,
     clientId: microsoftClientId,
+    nativeAdminAgentsGroupId: env.MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID,
     accessToken: tokenProvider,
     appConsentRedirectUri: required("MICROSOFT_PARTNER_APP_REDIRECT_URI"),
     fetchImpl,
@@ -119,8 +122,8 @@ export function createMicrosoftMailLivePorts(input: {
   }
 
   return {
-    tenant_bootstrap: async ({ run }) => {
-      return typeof stateData(run).pax8CompanyId === "string"
+    provider_company: async ({ run }) => {
+      return typeof stateData(run).pax8CompanyId === "string" && stateData(run).pax8CompanyId !== ""
         ? complete()
         : { kind: "manual_review", code: "PAX8_COMPANY_SETUP_REQUIRED" }
     },
@@ -198,10 +201,10 @@ export function createMicrosoftMailLivePorts(input: {
       if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Record the verified customer Microsoft tenant ID internally before requesting access." })
       const data = stateData(run)
       const automatic = data.autoProvisionAuthorized === true
-      let effectiveRoleIds = roleIds
+      let effectiveRoleIds = [...new Set([...roleIds, ...requiredMailRoleIds])]
       const requestAccess = async () => {
         if (automatic) return pause({ code: "PROVIDER_ADMIN_DELEGATION_PENDING", state: "consent_pending", message: "Waiting for the provider to make the customer delegation available.", data: { gdapRelationshipId: null, gdapAccessAssignmentId: null } })
-        const created = await microsoft.createGdapApprovalRequest({ customerTenantId: tenantId, displayName: `Siteinabox ${request.domain}`.slice(0,50), durationDays: 730, roleDefinitionIds: roleIds })
+        const created = await microsoft.createGdapApprovalRequest({ customerTenantId: tenantId, displayName: `Siteinabox ${request.domain}`.slice(0,50), durationDays: 730, roleDefinitionIds: [...new Set([...roleIds, ...requiredMailRoleIds])] })
         return pause({ code: "GDAP_APPROVAL_REQUIRED", state: "consent_pending", actionUrl: created.approvalUrl,
           message: "Optidigi must approve this request internally using the authorized customer Global Administrator account.",
           data: { gdapRelationshipId: created.relationshipId, gdapRequestId: created.requestId, gdapApprovalUrl: created.approvalUrl, gdapAccessAssignmentId: null } })
@@ -227,7 +230,7 @@ export function createMicrosoftMailLivePorts(input: {
       const relationship = await microsoft.getGdapRelationship(relationshipId)
       if (relationship.customer?.tenantId?.toLowerCase() !== tenantId.toLowerCase()) return { kind: "manual_review", code: "GDAP_CUSTOMER_MISMATCH" }
       if (["expired", "terminated"].includes(relationship.status.toLowerCase())) return requestAccess()
-      if (automatic && relationship.status === "approvalPending" && !data.providerGdapApprovalRequestId) {
+      if (automatic && relationship.status === "approvalPending" && relationshipId !== data.mailBootstrapTargetRelationshipId && !data.providerGdapApprovalRequestId) {
         const approval = await microsoft.approveProviderGdap({ relationshipId, customerTenantId: tenantId })
         return pause({ code: "PROVIDER_ADMIN_DELEGATION_ACTIVATING", state: "consent_pending", message: "Waiting for Microsoft to activate the provider-created delegation.", data: { providerGdapApprovalRequestId: approval.requestId, providerGdapApprovalRequestedAt: new Date().toISOString() } })
       }
@@ -237,7 +240,7 @@ export function createMicrosoftMailLivePorts(input: {
         const selection = selectMailGdapRoles(approved)
         if (!selection) return requestAccess()
         effectiveRoleIds = selection.roleDefinitionIds
-      } else if (!roleIds.every(role => approved.includes(role.toLowerCase()))) return requestAccess()
+      } else if (![...new Set([...roleIds, ...requiredMailRoleIds])].every(role => approved.includes(role.toLowerCase()))) return requestAccess()
       if (typeof data.gdapAccessAssignmentId !== "string") {
         if (automatic) {
           const existing = (await microsoft.listGdapAccessAssignments(relationshipId)).filter(assignment => assignment.accessContainer?.accessContainerId?.toLowerCase() === securityGroupId.toLowerCase() && assignment.accessContainer.accessContainerType === "securityGroup")
@@ -257,16 +260,58 @@ export function createMicrosoftMailLivePorts(input: {
         await microsoft.updateGdapAccessAssignment(relationshipId,assignment.id,updatedRoles)
         return pause({ code: "GDAP_ACCESS_ASSIGNMENT_PENDING", state: "consent_pending", message: "The configured group roles were updated; waiting for activation." })
       }
-      return complete({ gdapStatus: relationship.status, mailGdapRoleDefinitionIds: effectiveRoleIds })
+      const authority = evaluateMailAuthority({ tenantId, relationshipTenantId: relationship.customer?.tenantId,
+        relationshipId, relationshipStatus: relationship.status, endDateTime: relationship.endDateTime,
+        assignmentId: assignment.id, assignmentStatus: assignment.status, groupId: securityGroupId,
+        assignedGroupId: assignment.accessContainer?.accessContainerId, approvedRoleIds: approved, assignedRoleIds: assigned })
+      if (authority.status === "not_ready") {
+        if (!automatic || authority.nextAction !== "bootstrap_customer_admin") return { kind: "manual_review", code: "MAIL_AUTHORITY_INSUFFICIENT", data: { mailAuthority: authority } }
+        const endpoint = env.MICROSOFT_MAIL_BOOTSTRAP_WORKER_URL
+        const secret = env.MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET
+        if (!endpoint || !secret || env.MICROSOFT_MAIL_AUTHORITY_QUALIFIED !== "managed-admin-v1") return { kind: "manual_review", code: "MAIL_BOOTSTRAP_NOT_QUALIFIED", data: { mailAuthority: authority } }
+        if (typeof data.mailBootstrapTargetRelationshipId !== "string") {
+          const created = await microsoft.createGdapApprovalRequest({ customerTenantId: tenantId, displayName: `SIAB mail ${run.id}`.slice(0,50), durationDays: 730, roleDefinitionIds: requiredMailRoleIds })
+          return pause({ code: "MAIL_BOOTSTRAP_RELATIONSHIP_CREATED", state: "consent_pending", message: "The required mail administration request is ready for backend approval.", data: { mailAuthority: authority, mailBootstrapTargetRelationshipId: created.relationshipId, mailBootstrapStartedAt: new Date().toISOString() } })
+        }
+        const job = createMailBootstrapJob({ runId: String(run.id), orderId: String(data.commerceOrderId), tenantId,
+          initialDomain: String(data.bootstrapInitialDomain ?? data.customerOrganizationDomain ?? ""), domain: run.domain,
+          applicationId: required("MICROSOFT_PARTNER_APP_CLIENT_ID"), partnerTenantId: required("MICROSOFT_PARTNER_TENANT_ID"), groupId: securityGroupId, sourceRelationshipId: relationshipId, targetRelationshipId: data.mailBootstrapTargetRelationshipId })
+        if (typeof data.mailBootstrapJobId === "string" && data.mailBootstrapJobId !== job.id) return { kind: "manual_review", code: "MAIL_BOOTSTRAP_BINDING_CHANGED", data: { mailAuthority: authority } }
+        const startedAt = typeof data.mailBootstrapStartedAt === "string" ? data.mailBootstrapStartedAt : new Date().toISOString()
+        if (!Number.isFinite(Date.parse(startedAt)) || Date.now() - Date.parse(startedAt) >= 1_800_000) return { kind: "manual_review", code: "MAIL_BOOTSTRAP_DEADLINE_EXCEEDED", data: { mailAuthority: authority } }
+        const client = new ManagedMailBootstrapClient({ endpoint, secret, fetchImpl: input.fetchImpl })
+        let receipt
+        try { receipt = await client.advance(job) }
+        catch { return { kind: "manual_review", code: "MAIL_BOOTSTRAP_OUTCOME_UNKNOWN", data: { mailAuthority: authority, mailBootstrapJobId: job.id } } }
+        if (receipt.phase === "blocked" || receipt.phase === "uncertain") return { kind: "manual_review", code: receipt.phase === "blocked" ? "MAIL_BOOTSTRAP_SECURITY_ACTION_REQUIRED" : "MAIL_BOOTSTRAP_OUTCOME_UNKNOWN", data: { mailAuthority: authority, mailBootstrapJobId: job.id } }
+        if (receipt.phase === "complete" && receipt.relationshipId !== job.targetRelationshipId) return { kind: "manual_review", code: "MAIL_BOOTSTRAP_DELEGATION_UNCHANGED", data: { mailAuthority: authority } }
+        if (receipt.phase === "complete") return pause({ code: "MAIL_BOOTSTRAP_VERIFYING", state: "consent_pending", message: "Verifying the customer administration access established by the private bootstrap worker.",
+          data: { mailAuthority: authority, mailBootstrapJobId: job.id, mailBootstrapStartedAt: startedAt, gdapRelationshipId: receipt.relationshipId, gdapAccessAssignmentId: null, managedAdminConsentGranted: true, appConsentResourceVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentSubmittedResources: ["graph", "exchange"], appConsentSubmittedVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentSubmittedAt: new Date().toISOString() } })
+        return pause({ code: "MAIL_BOOTSTRAP_IN_PROGRESS", state: "consent_pending", message: "Customer administration is being configured automatically.", data: { mailAuthority: authority, mailBootstrapJobId: job.id, mailBootstrapStartedAt: startedAt } })
+      }
+      return complete({ gdapStatus: relationship.status, mailGdapRoleDefinitionIds: authority.grantedRoles, mailAuthority: authority })
     },
-    application_consent: async ({ run }) => {
+    application_consent: async ({ run, request }) => {
       const tenantId = customerTenantId(run)
       if (!tenantId) return pause({ code: "MICROSOFT_TENANT_ID_REQUIRED", state: "consent_pending", message: "Record the verified customer tenant ID internally." })
       const data = stateData(run)
+      try {
+        if (!await microsoft.partnerGroupMembershipVerified(securityGroupId)) return { kind: "manual_review", code: "MICROSOFT_PARTNER_GROUP_REQUIRED" }
+      } catch (error) {
+        if (error instanceof MicrosoftApiError && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500)) return pause({ code: "PARTNER_GROUP_READ_UNAVAILABLE", state: "consent_pending", message: "Partner group verification is temporarily unavailable." })
+        return { kind: "manual_review", code: "MICROSOFT_PARTNER_GROUP_VERIFICATION_REQUIRED" }
+      }
       const resources = data.appConsentResourceVersion === MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && Array.isArray(data.appConsentSubmittedResources)
         ? data.appConsentSubmittedResources.filter((value): value is "graph" | "exchange" => value === "graph" || value === "exchange") : []
       const submitted = resources.includes("graph") && resources.includes("exchange")
-      if (data.appConsentVersion !== MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && !submitted) {
+      let existingGrants = false
+      try { existingGrants = await microsoft.customerApplicationGrantsVerified(tenantId) }
+      catch (error) {
+        if (error instanceof MicrosoftApiError && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500)) return pause({ code: "APPLICATION_GRANT_READ_UNAVAILABLE", state: "consent_pending", message: "Microsoft application-grant readback is temporarily unavailable." })
+        if (error instanceof MicrosoftApiError && [401,403].includes(error.status)) return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
+        if (!(error instanceof MicrosoftTokenRequestError && error.code === "customer_consent_required")) throw error
+      }
+      if (!existingGrants && data.managedAdminConsentGranted !== true && data.appConsentVersion !== MICROSOFT_MAIL_APPLICATION_GRANT_VERSION && !submitted) {
         const resource = resources.includes("graph") ? "exchange" as const : "graph" as const
         const hash = createHash("sha256").update(`customer-consent:${run.id}:${MICROSOFT_MAIL_APPLICATION_GRANT_VERSION}`).digest("hex")
         const id = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`
@@ -287,7 +332,7 @@ export function createMicrosoftMailLivePorts(input: {
           if (!accepted) {
             const failures = data.appConsentResourceFirstFailureVersion === MICROSOFT_MAIL_APPLICATION_GRANT_VERSION ? object(data.appConsentResourceFirstFailures) : {}
             const firstFailure = typeof failures[resource] === "string" ? failures[resource] : new Date().toISOString()
-            if (data.autoProvisionAuthorized === true && Date.now() - Date.parse(firstFailure) < 1_800_000) return pause({ code: "PARTNER_APP_AUTHORIZATION_PROPAGATING", state: "consent_pending", message: "Waiting for Microsoft to finish propagating the delegated access and application resource.", data: { appConsentResourceFirstFailureVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentResourceFirstFailures: { ...failures, [resource]: firstFailure } } })
+            if (error.status === 400 && error.retryable === true && data.autoProvisionAuthorized === true && Date.now() - Date.parse(firstFailure) < 1_800_000) return pause({ code: "PARTNER_APP_AUTHORIZATION_PROPAGATING", state: "consent_pending", message: "Waiting for Microsoft to finish propagating the delegated access and application resource.", data: { appConsentResourceFirstFailureVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentResourceFirstFailures: { ...failures, [resource]: firstFailure } } })
             return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
           }
         }
@@ -300,16 +345,25 @@ export function createMicrosoftMailLivePorts(input: {
         const organization = await microsoft.getOrganization(tenantId)
         const expected = String(data.bootstrapInitialDomain ?? data.customerOrganizationDomain ?? "").toLowerCase()
         if (!organization.initialDomain || organization.id.toLowerCase() !== tenantId.toLowerCase() || !expected || organization.initialDomain.toLowerCase() !== expected) return { kind: "manual_review", code: "MICROSOFT_ORGANIZATION_BINDING_MISMATCH" }
+        if (!existingGrants) {
+          if (submitted && Date.now() - Date.parse(String(data.appConsentSubmittedAt)) < 900_000) return pause({ code: "PARTNER_APP_CONSENT_PROPAGATING", state: "consent_pending", message: "Waiting for the recorded tenant-wide resource grants to become visible." })
+          return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
+        }
         const token = await tokenProvider({ tenantId, resource: "exchange" })
-        try { await exchange.execute({ operation: "verify_access", customerTenantId: tenantId, customerOrganizationDomain: organization.initialDomain, domain: run.domain, accessToken: token, partnerUserPrincipalName: await partnerUpn() }) }
-        catch {
+        try { await exchange.execute({ operation: "verify_access", customerTenantId: tenantId, customerOrganizationDomain: organization.initialDomain, domain: run.domain, accessToken: token, requiredOperations: ["get_dkim_targets", "enable_dkim", ...(request.infoSharedMailbox ? ["ensure_info_shared" as const] : request.infoAliasTarget ? ["ensure_info_alias" as const] : request.retainInfoForward ? ["ensure_info_forward" as const] : [])], partnerUserPrincipalName: await partnerUpn() }) }
+        catch (error) {
+          if (error instanceof ExchangeWorkerError && [401,403].includes(error.status)) return { kind: "manual_review", code: "EXCHANGE_ACCESS_REQUIRES_REVIEW" }
           if (data.autoProvisionAuthorized === true && submitted && Date.now() - Date.parse(String(data.appConsentSubmittedAt)) < 1_800_000) return pause({ code: "EXCHANGE_ACCESS_PROPAGATING", state: "consent_pending", message: "Waiting for Microsoft to activate the newly delegated Exchange access." })
           return { kind: "manual_review", code: "EXCHANGE_ACCESS_REQUIRES_REVIEW" }
         }
-        return complete({ customerOrganizationId: organization.id, customerOrganizationName: organization.displayName ?? null, customerOrganizationDomain: organization.initialDomain,
+        const priorAuthority = data.mailAuthority as MailAuthority | undefined
+        if (!priorAuthority || priorAuthority.status !== "delegation_ready" || priorAuthority.tenantId !== tenantId || !priorAuthority.evidence.bindingVerified || Date.now() - Date.parse(priorAuthority.evidence.observedAt) >= 300_000 || (priorAuthority.evidence.expiresAt !== null && !(Date.parse(priorAuthority.evidence.expiresAt) > Date.now()))) return { kind: "manual_review", code: "MAIL_AUTHORITY_REVALIDATION_REQUIRED" }
+        const mailAuthority: MailAuthority = { ...priorAuthority, status: "ready", nextAction: "none", evidence: { ...priorAuthority.evidence, observedAt: new Date().toISOString() } }
+        return complete({ mailAuthority, customerOrganizationId: organization.id, customerOrganizationName: organization.displayName ?? null, customerOrganizationDomain: organization.initialDomain,
           appConsentVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, appConsentVerified: true, appConsentConfirmedAt: new Date().toISOString() })
       } catch (error) {
-        if (error instanceof MicrosoftApiError && [401,403].includes(error.status) || error instanceof MicrosoftTokenRequestError && error.code === "customer_consent_required") {
+        if (error instanceof MicrosoftApiError && [401,403].includes(error.status)) return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
+        if (error instanceof MicrosoftTokenRequestError && error.code === "customer_consent_required") {
           if (submitted && Date.now() - Date.parse(String(data.appConsentSubmittedAt)) < 900_000) return pause({ code: "PARTNER_APP_CONSENT_PROPAGATING", state: "consent_pending", message: "Waiting for the submitted customer application grants." })
           return { kind: "manual_review", code: "CUSTOMER_RECONSENT_REQUIRED" }
         }

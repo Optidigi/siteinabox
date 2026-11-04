@@ -1,5 +1,9 @@
 # Microsoft mail provisioning
 
+> **Contract:** [Microsoft mail provisioning contract](../contracts/microsoft-mail-provisioning.md)
+> defines customer/provider boundaries, consent and email guarantees. This file
+> is the operator runbook.
+
 ## Scope and current state
 
 `/email` is the tenant owner's payment-gated email flow. `/accounts` lets a
@@ -14,15 +18,17 @@ show mailbox details, price, agreement authorization, payment and progress;
 Microsoft/Pax8 administration remains internal. **The customer's checkbox
 records authorization; it does not impersonate Microsoft's GDAP approval.**
 For funded automatic runs, Siteinabox allocates an unused service-specific initial
-Microsoft domain, discovers the ordered tenant through Microsoft metadata and
-binds it to the reseller's customer delegation. It reuses the provider-created
-relationship and assigns only roles already granted to the partner group. A
-provider-created invitation relationship can use Microsoft's documented partner
-approval action; this does not authorize silently approving other relationships.
-Legacy operator-run onboarding retains its explicit approval checkpoints.
-The automatic path requires live qualification of the actual provider-created
-relationship, application consent and effective domain/Exchange permissions;
-synthetic tests do not establish those permissions.
+Microsoft domain, discovers the ordered tenant and binds the reseller delegation.
+Partial default GDAP is bootstrap authority only. The private backend worker
+creates a managed local administrator, completes normal password/MFA setup,
+approves a complete mail GDAP request and grants narrow resource consent. CMS
+then independently reads roles, grants, tenant binding and Exchange capabilities.
+The [authority contract](../contracts/microsoft-mail-authority.md) owns this
+sequence; the [worker runbook](microsoft-mail-authority-worker.md) owns platform
+commissioning, secure recovery and qualification. Initial-order admission fails
+closed until this worker is qualified and healthy. Legacy operator controls are
+exception/reconciliation tools, not routine customer onboarding. No fresh-tenant
+live proof is claimed by source implementation or synthetic tests.
 
 Local verification uses synthetic HTTP responses and an explicitly owned
 PostgreSQL test resource. It does not prove live supplier permissions, tenant

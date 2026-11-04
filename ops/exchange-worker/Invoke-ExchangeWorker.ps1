@@ -26,7 +26,22 @@ function Invoke-ExchangeJob($Job) {
   try {
     if ($Job.operation -eq 'verify_access') {
       Get-OrganizationConfig -ErrorAction Stop | Out-Null
-      return @{ operation = $Job.operation; completed = $true; accessVerified = $true }
+      $commands = @{
+        get_dkim_targets = @('Get-DkimSigningConfig', 'New-DkimSigningConfig')
+        enable_dkim = @('Get-DkimSigningConfig', 'Set-DkimSigningConfig')
+        ensure_info_alias = @('Get-EXOMailbox', 'Get-EXORecipient', 'Set-Mailbox')
+        ensure_info_shared = @('Get-EXOMailbox', 'New-Mailbox', 'Set-Mailbox', 'Get-MailboxPermission', 'Add-MailboxPermission', 'Get-RecipientPermission', 'Add-RecipientPermission')
+        ensure_info_forward = @('Get-EXOMailbox', 'New-Mailbox', 'Set-Mailbox', 'Get-HostedOutboundSpamFilterPolicy', 'New-HostedOutboundSpamFilterPolicy', 'Set-HostedOutboundSpamFilterPolicy', 'Get-HostedOutboundSpamFilterRule', 'New-HostedOutboundSpamFilterRule', 'Set-HostedOutboundSpamFilterRule')
+      }
+      if (-not $Job.PSObject.Properties['requiredOperations'] -or @($Job.requiredOperations).Count -lt 2 -or @($Job.requiredOperations).Count -gt 3) { throw 'invalid_capability_request' }
+      foreach ($operation in @($Job.requiredOperations)) {
+        if (-not $commands.ContainsKey([string]$operation)) { throw 'invalid_capability_request' }
+        foreach ($command in $commands[[string]$operation]) {
+          try { Get-Command -Name $command -ErrorAction Stop | Out-Null }
+          catch { throw 'exchange_capability_missing' }
+        }
+      }
+      return @{ operation = $Job.operation; completed = $true; accessVerified = $true; capabilitiesVerified = $true }
     }
     if ($Job.operation -eq 'verify_mailboxes') {
       $addresses = @($Job.mailboxAddresses)
@@ -161,7 +176,7 @@ while ($listener.IsListening) {
       $healthy = [bool]$module -and [bool]$dnsTool
       $healthStatus = if ($healthy) { 200 } else { 503 }
       $moduleVersion = if ($module) { [string]$module.Version } else { '' }
-      Send-Json $context $healthStatus @{ healthy = $healthy; protocolVersion = 1; moduleVersion = $moduleVersion; dnsToolAvailable = [bool]$dnsTool }
+      Send-Json $context $healthStatus @{ healthy = $healthy; protocolVersion = 2; moduleVersion = $moduleVersion; dnsToolAvailable = [bool]$dnsTool }
       continue
     }
     if ($context.Request.ContentType -notlike 'application/json*') { Send-Json $context 415 @{ code = 'content_type_required' }; continue }

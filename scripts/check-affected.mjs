@@ -8,6 +8,7 @@ export function affectedProfiles(paths) {
     if (path.startsWith("apps/cms/")) profiles.add("cms-fast")
     else if (path.startsWith("apps/renderer/")) profiles.add("renderer-fast")
     else if (path.startsWith("apps/landing/")) profiles.add("site-fast")
+    else if (path.startsWith("packages/mail-authority-worker/") || path === "packages/contracts/src/microsoft-mail-authority.ts") profiles.add("mail-authority")
     else if (/^(?:docs\/|AGENTS\.md$|README)/.test(path)) continue
     else for (const profile of ["cms-fast", "renderer-fast", "site-fast"]) profiles.add(profile)
   }

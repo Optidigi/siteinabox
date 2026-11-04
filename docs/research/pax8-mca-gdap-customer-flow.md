@@ -3,6 +3,15 @@
 **Reviewed:** 2026-10-26
 **Question:** Can Siteinabox capture customer authorization and have Microsoft Customer Agreement (MCA) acceptance and Granular Delegated Admin Privileges (GDAP) happen without the customer visiting Microsoft Admin Center?
 
+> **Historical snapshot (2026-10-26), not current implementation status.** Its
+> “current code” and readiness statements describe the code at the time of that
+> research and have since been superseded. For the current customer/provider
+> contract and implementation boundary, use the
+> [Microsoft mail provisioning contract](../contracts/microsoft-mail-provisioning.md)
+> and [operator runbook](../runbooks/microsoft-mail-provisioning.md). The
+> official-source findings below remain research evidence; they are not proof
+> that current live tenant, supplier or delivery behavior has been rehearsed.
+
 ## Conclusion
 
 **Verdict: the customer-facing target is achievable, but the current code is not

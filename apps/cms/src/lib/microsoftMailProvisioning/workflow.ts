@@ -1,4 +1,5 @@
 import "server-only"
+import { mailDelegationCurrent } from "./mailAuthority.ts"
 import {
   parseMicrosoftMailProvisioningRequest,
   type MicrosoftMailProvisioningRequest,
@@ -10,7 +11,7 @@ import {
 } from "./state.ts"
 
 export type MicrosoftMailProvisioningStep =
-  | "tenant_bootstrap"
+  | "provider_company"
   | "tenant_identity"
   | "mca_acceptance"
   | "gdap"
@@ -28,7 +29,7 @@ export type MicrosoftMailProvisioningStep =
 export type MicrosoftMailStepOutcome =
   | { kind: "complete"; data?: Record<string, unknown> }
   | { kind: "waiting"; code: string; state: MicrosoftMailProvisioningState; actionUrl?: string; message: string; data?: Record<string, unknown> }
-  | { kind: "manual_review"; code: string }
+  | { kind: "manual_review"; code: string; data?: Record<string, unknown> }
 
 export type MicrosoftMailProvisioningRun = {
   id: string | number
@@ -94,7 +95,7 @@ export class MicrosoftMailProvisioningRunNotFoundError extends Error {
 const readOnlySteps = new Set<MicrosoftMailProvisioningStep>(["tenant_identity", "mca_acceptance"])
 
 const steps: readonly MicrosoftMailProvisioningStep[] = [
-  "tenant_bootstrap",
+  "provider_company",
   "subscription",
   "tenant_identity",
   "gdap",
@@ -111,7 +112,7 @@ const steps: readonly MicrosoftMailProvisioningStep[] = [
 ]
 
 const pendingStateFor: Record<MicrosoftMailProvisioningStep, MicrosoftMailProvisioningState> = {
-  tenant_bootstrap: "tenant_pending",
+  provider_company: "tenant_pending",
   tenant_identity: "consent_pending",
   mca_acceptance: "consent_pending",
   gdap: "consent_pending",
@@ -235,12 +236,24 @@ export async function advanceMicrosoftMailProvisioning(input: {
   store: MicrosoftMailProvisioningStore
   ports: MicrosoftMailProvisioningPorts
   now?: () => Date
+  authorityOnly?: boolean
 }): Promise<MicrosoftMailProvisioningRun> {
   const now = input.now ?? (() => new Date())
   let run = input.run
   if (["ready", "manual_review", "failed", "cancelled"].includes(run.state)) return run
 
-  for (const step of steps) {
+  if (input.authorityOnly && run.state === "prepared") {
+    run = await input.store.update(run.id, {state: transition(run.state, "tenant_pending"), updatedAt: now().toISOString()})
+  }
+  if (["gdap", "application_consent"].some(step => ["started", "uncertain"].includes(providerStepStates(run.data)[step] ?? ""))) {
+    return input.store.update(run.id, { state: transition(run.state, "manual_review"), issueCode: "provider_step_outcome_unknown", updatedAt: now().toISOString() })
+  }
+  if (run.mode === "live" && run.data.autoProvisionAuthorized === true && run.completedSteps.includes("gdap") && (input.authorityOnly || !mailDelegationCurrent(run.data.mailAuthority, String(run.data.customerTenantId), now().getTime()))) {
+    // Rewind only readback gates; retain all supplier/workload write receipts.
+    run = await input.store.update(run.id, { state: transition(run.state, "consent_pending"), completedSteps: run.completedSteps.filter(step => step !== "gdap" && step !== "application_consent"),
+      data: { ...run.data, mailAuthority: null, appConsentVerified: false, providerStepStates: { ...providerStepStates(run.data), gdap: "waiting", application_consent: "waiting" } }, updatedAt: now().toISOString() })
+  }
+  for (const step of input.authorityOnly ? ["gdap", "application_consent"] as const : steps) {
     if (run.completedSteps.includes(step)) continue
     const priorStepState = providerStepStates(run.data)[step]
     if (priorStepState === "started" && !readOnlySteps.has(step) || priorStepState === "uncertain") {
@@ -321,7 +334,7 @@ export async function advanceMicrosoftMailProvisioning(input: {
     if (outcome.kind === "manual_review") {
       return input.store.update(run.id, {
         state: transition(run.state, "manual_review"),
-        data: { ...run.data, providerStepStates: { ...providerStepStates(run.data), [step]: "uncertain" } },
+        data: { ...run.data, ...(outcome.data ?? {}), providerStepStates: { ...providerStepStates(run.data), [step]: "uncertain" } },
         issueCode: outcome.code,
         updatedAt: now().toISOString(),
       })
@@ -337,6 +350,7 @@ export async function advanceMicrosoftMailProvisioning(input: {
     })
   }
 
+  if (input.authorityOnly) return run
   return input.store.update(run.id, {
     state: transition(run.state, "ready"),
     currentStep: null,

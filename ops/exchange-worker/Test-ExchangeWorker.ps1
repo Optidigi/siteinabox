@@ -18,6 +18,7 @@ function Get-EXOMailbox { param($Identity,$Properties,$ErrorAction) return @{ Re
 function Get-EXORecipient { param($Filter,$ErrorAction) return @{ PrimarySmtpAddress = 'someone-else@customer.test' } }
 function Set-Mailbox { $script:mailboxWrites++ }
 function Get-DkimSigningConfig { param($Identity,$ErrorAction) return @{ Selector1CNAME = 'one.example.test'; Selector2CNAME = 'two.example.test'; Enabled = $false } }
+function New-DkimSigningConfig { }
 function Set-DkimSigningConfig { $script:dkimWrites++ }
 function dig { return 'wrong.example.test.' }
 function Assert-ThrowsCode($Operation,$Expected) {
@@ -25,8 +26,11 @@ function Assert-ThrowsCode($Operation,$Expected) {
   catch { if ($_.Exception.Message -ne $Expected) { throw } }
 }
 $base = @{ customerTenantId = '00000000-0000-0000-0000-000000000001'; customerOrganizationDomain = 'customer.onmicrosoft.com'; domain = 'customer.test'; accessToken = 'synthetic'; partnerUserPrincipalName = 'operator@partner.test' }
-$job = $base.Clone(); $job.operation = 'verify_access'
+$job = $base.Clone(); $job.operation = 'verify_access'; $job.requiredOperations = @('get_dkim_targets', 'enable_dkim')
 if (-not (Invoke-ExchangeJob ([pscustomobject]$job)).accessVerified) { throw 'Access verification failed' }
+Remove-Item Function:New-DkimSigningConfig
+Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'exchange_capability_missing'
+function New-DkimSigningConfig { }
 $job = $base.Clone(); $job.operation = 'ensure_info_forward'; $job.infoAddress = 'info@customer.test'; $job.forwardTo = 'info@external.test'
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'existing_info_mailbox_requires_review'
 if ($script:mailboxWrites) { throw 'Existing licensed mailbox was modified' }

@@ -69,9 +69,9 @@ async function draft(input: { tenant: Tenant; owner: User; service: MicrosoftMai
 }
 
 async function configured() {
-  const env = { MICROSOFT_MAIL_ALLOWED_DOMAINS: Array.from({ length: 100 }, (_, i) => `email-fixture-${i + 1}.test`).join(","), MICROSOFT_MAIL_CHECKOUT_ENABLED: "true", MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED: "true", PAX8_CLIENT_ID: "synthetic", PAX8_CLIENT_SECRET: "synthetic", PAX8_ORDER_EMAIL: "operations@fixture.test", PAX8_MPN_ID: "synthetic",
+  const env = { MICROSOFT_MAIL_AUTHORITY_QUALIFIED: "managed-admin-v1", MICROSOFT_MAIL_BOOTSTRAP_WORKER_URL: "https://worker.fixture.test", MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET: "s".repeat(40), MICROSOFT_MAIL_ALLOWED_DOMAINS: Array.from({ length: 100 }, (_, i) => `email-fixture-${i + 1}.test`).join(","), MICROSOFT_MAIL_CHECKOUT_ENABLED: "true", MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED: "true", PAX8_CLIENT_ID: "synthetic", PAX8_CLIENT_SECRET: "synthetic", PAX8_ORDER_EMAIL: "operations@fixture.test", PAX8_MPN_ID: "synthetic",
     MICROSOFT_PARTNER_TENANT_ID: "00000000-0000-0000-0000-000000000001", MICROSOFT_PARTNER_APP_CLIENT_ID: "00000000-0000-0000-0000-000000000002", MICROSOFT_PARTNER_APP_CLIENT_SECRET: "synthetic",
-    MICROSOFT_PARTNER_TOKEN_ENCRYPTION_KEY: setupKey, MICROSOFT_PARTNER_APP_REDIRECT_URI: "https://admin.fixture.test/operations/microsoft-mail/consent/callback", MICROSOFT_GDAP_ROLE_DEFINITION_IDS: "role", MICROSOFT_PARTNER_SECURITY_GROUP_ID: "group",
+    MICROSOFT_PARTNER_TOKEN_ENCRYPTION_KEY: setupKey, MICROSOFT_PARTNER_APP_REDIRECT_URI: "https://admin.fixture.test/operations/microsoft-mail/consent/callback", MICROSOFT_GDAP_ROLE_DEFINITION_IDS: "role", MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID:"00000000-0000-4000-8000-000000000005", MICROSOFT_PARTNER_SECURITY_GROUP_ID: "00000000-0000-4000-8000-000000000004",
     MICROSOFT_MAIL_SETUP_ENCRYPTION_KEY: setupKey, MICROSOFT_MAIL_CURRENCY: "EUR", MICROSOFT_MAIL_ANNUAL_SEAT_NET_MINOR: "5604", CLOUDFLARE_API_TOKEN: "synthetic", CLOUDFLARE_ACCOUNT_ID: "0".repeat(32),
     CLOUDFLARE_EMAIL_API_TOKEN: "siab-test-synthetic-mail-transport-token-long", EMAIL_FROM: "noreply@fixture.test", SITE_URL: "https://admin.fixture.test", EXCHANGE_WORKER_URL: "https://worker.fixture.test/jobs", EXCHANGE_WORKER_SHARED_SECRET: "x".repeat(40) }
   for (const [key,value] of Object.entries(env)) vi.stubEnv(key,value)
@@ -86,7 +86,8 @@ async function legalVersion() {
 }
 function tokenFetch() {
   const spy = vi.fn(async (input: RequestInfo | URL) => {
-    if (new URL(String(input)).hostname === "worker.fixture.test") return Response.json({ healthy: true, protocolVersion: 1, moduleVersion: "3.10.1", dnsToolAvailable: true })
+    if (new URL(String(input)).pathname.endsWith("/me/transitiveMemberOf/microsoft.graph.group")) return Response.json({value:[{id:process.env.MICROSOFT_PARTNER_SECURITY_GROUP_ID,securityEnabled:true},{id:process.env.MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID,displayName:"AdminAgents",securityEnabled:true}]})
+    if (new URL(String(input)).hostname === "worker.fixture.test") return Response.json({ healthy: true, protocolVersion: 2, moduleVersion: "3.10.1", dnsToolAvailable: true, protocol: "siab-managed-mail-authority-v1", unattended: true, qualified: true, applicationId:process.env.MICROSOFT_PARTNER_APP_CLIENT_ID,partnerTenantId:process.env.MICROSOFT_PARTNER_TENANT_ID,groupId:process.env.MICROSOFT_PARTNER_SECURITY_GROUP_ID })
     if (new URL(String(input)).hostname === "login.microsoftonline.com") return Response.json({ access_token: "synthetic-partner-token", refresh_token: "synthetic-rotated-refresh", expires_in: 3600 })
     throw new Error("Unexpected provider connection in a synthetic integration test")
   })
@@ -129,7 +130,7 @@ describe("payment-gated email and customer pricing", () => {
     expect((await payload.find({ collection: "agreement-acceptances", where: { order: { equals: order.id } }, overrideAccess: true })).docs).toHaveLength(2)
     const other = await draft(c, "manual", "two")
     await expect(acceptMailOrder(payload, { runId: Number(other.id), tenantId: c.tenant.id, actor: c.owner, legalAccepted: true, legalVersion: await legalVersion() })).rejects.toThrow(/existing email order/)
-    expect(fetchSpy.mock.calls.every(call => new URL(String(call[0])).hostname === "login.microsoftonline.com" || new URL(String(call[0])).hostname === "worker.fixture.test")).toBe(true)
+    expect(fetchSpy.mock.calls.every(call => new URL(String(call[0])).hostname === "login.microsoftonline.com" || new URL(String(call[0])).hostname === "worker.fixture.test" || new URL(String(call[0])).hostname === "graph.microsoft.com")).toBe(true)
   })
   it("records one immutable external receipt and invoice, and denies wrong amounts or owner self-settlement", async () => {
     const c = await customer(true); const run = await draft(c)
@@ -303,4 +304,40 @@ it("preserves a legacy namespace when the supplier order outcome is unknown inst
  expect(held?.issueCode).toBe("PROVIDER_WRITE_RECONCILIATION_REQUIRED")
  expect(held?.data.bootstrapInitialDomain).toBe(originalDomain)
  expect(fetchSpy).not.toHaveBeenCalled()
+})
+
+it("renewal acceptance does not depend on a bootstrap or Exchange worker session",async()=>{
+ const c=await customer();await configured()
+ await payload.update({collection:"microsoft-mail-services",id:c.service.id,overrideAccess:true,context:{microsoftMailServiceMutation:true},data:{status:"active",quantity:1}})
+ const run=await draft(c,"mollie","renewal")
+ const quote=run.data.quote as Record<string,unknown>
+ await new PayloadMicrosoftMailProvisioningStore(payload).update(run.id,{data:{...run.data,quote:{...quote,operation:"renewal",baseQuantity:1,targetQuantity:1,servicePeriodStartsAt:"2027-11-04T00:00:00Z",servicePeriodEndsAt:"2028-11-04T00:00:00Z"}}})
+ vi.stubEnv("MICROSOFT_MAIL_AUTHORITY_QUALIFIED","")
+ vi.stubEnv("MICROSOFT_MAIL_BOOTSTRAP_WORKER_URL","")
+ vi.stubEnv("MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET","")
+ const calls:string[]=[]
+ vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL)=>{
+  const url=new URL(String(input));calls.push(url.hostname)
+  if(url.hostname==="login.microsoftonline.com")return Response.json({access_token:"synthetic-renewal-token",refresh_token:"synthetic-rotated",expires_in:3600})
+  throw Error("Renewal must not require workload or bootstrap runtime")
+ }))
+ const order=await acceptMailOrder(payload,{runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:await legalVersion()})
+ expect(order.orderKind).toBe("microsoft_mail_renewal")
+ expect(calls.every(host=>host==="login.microsoftonline.com")).toBe(true)
+})
+
+it("missing effective partner authority blocks order acceptance before charging or purchasing",async()=>{
+ const c=await customer();await configured();const run=await draft(c,"mollie","blocked-authority")
+ let businessWrites=0
+ vi.stubGlobal("fetch",vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+  const url=new URL(String(input))
+  if(url.hostname==="login.microsoftonline.com")return Response.json({access_token:"synthetic",refresh_token:"synthetic-rotated",expires_in:3600})
+  if(init?.method&&init.method!=="GET")businessWrites++
+  if(url.hostname==="worker.fixture.test")return Response.json({healthy:true,protocolVersion:2,moduleVersion:"3.10.1",dnsToolAvailable:true,protocol:"siab-managed-mail-authority-v1",unattended:true,qualified:true,applicationId:process.env.MICROSOFT_PARTNER_APP_CLIENT_ID,partnerTenantId:process.env.MICROSOFT_PARTNER_TENANT_ID,groupId:process.env.MICROSOFT_PARTNER_SECURITY_GROUP_ID})
+  if(url.hostname==="graph.microsoft.com")return Response.json({value:[]})
+  throw Error("Blocked admission must not reach commerce providers")
+ }))
+ await expect(acceptMailOrder(payload,{runId:Number(run.id),tenantId:c.tenant.id,actor:c.owner,legalAccepted:true,legalVersion:await legalVersion()})).rejects.toThrow(/temporarily unavailable/)
+ expect((await payload.find({collection:"orders",where:{orderNumber:{equals:`MAIL-${run.id}`}},overrideAccess:true})).totalDocs).toBe(0)
+ expect(businessWrites).toBe(0)
 })

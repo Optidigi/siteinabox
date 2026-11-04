@@ -210,3 +210,38 @@ it("approves only a matching provider-offered delegation and reuses existing ass
  await assert.rejects(client.approveProviderGdap({relationshipId:"offered",customerTenantId:"other"}),/customer/)
  assert.equal(requests.filter(row=>row.method==="POST").length,before)
 })
+
+it("requires complete tenant-wide delegated grants for both resource service principals", async () => {
+ const graphId="00000003-0000-0000-c000-000000000000", exchangeId="00000002-0000-0ff1-ce00-000000000000"
+ let missing=true
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",accessToken:async()=>"synthetic",fetchImpl:async(input)=>{
+  const u=new URL(String(input))
+  if(u.pathname.endsWith("/servicePrincipals"))return Response.json({value:[{id:"client-sp",appId:"app"},{id:"graph-sp",appId:graphId},{id:"exo-sp",appId:exchangeId}]})
+  if(u.pathname.endsWith("/oauth2PermissionGrants"))return Response.json({value:[{clientId:"client-sp",resourceId:"graph-sp",consentType:"AllPrincipals",scope:"Directory.Read.All Organization.Read.All Domain.ReadWrite.All User.ReadWrite.All LicenseAssignment.ReadWrite.All"},{clientId:"client-sp",resourceId:"exo-sp",consentType:missing?"Principal":"AllPrincipals",scope:"Exchange.Manage"}]})
+  throw Error("Unexpected request")
+ }})
+ assert.equal(await client.customerApplicationGrantsVerified("customer"),false)
+ missing=false
+ assert.equal(await client.customerApplicationGrantsVerified("customer"),true)
+})
+
+it("requires effective partner membership before treating assigned group roles as usable",async()=>{
+ let member=true
+ const client=new MicrosoftMailClient({partnerTenantId:"partner",clientId:"app",nativeAdminAgentsGroupId:"native",accessToken:async input=>{assert.equal(input.tenantId,"partner");return "synthetic"},fetchImpl:async(input,init)=>{
+  const url=new URL(String(input));assert.equal(url.pathname,"/v1.0/me/transitiveMemberOf/microsoft.graph.group");assert.equal(url.searchParams.get("$count"),"true");assert.equal(new Headers(init?.headers).get("ConsistencyLevel"),"eventual")
+  return Response.json({value:[...(member?[{id:"configured",securityEnabled:true}]:[]),{id:"native",displayName:"AdminAgents",securityEnabled:true}]})
+ }})
+ assert.equal(await client.partnerGroupMembershipVerified("configured"),true)
+ member=false
+ assert.equal(await client.partnerGroupMembershipVerified("configured"),false)
+})
+
+it("binds native AdminAgents to its commissioned ID, rejecting a same-name group",async()=>{
+ let nativeId="impostor"
+ const options={partnerTenantId:"partner",clientId:"app",accessToken:async()=>"synthetic",fetchImpl:async()=>Response.json({value:[{id:"configured",securityEnabled:true},{id:nativeId,displayName:"AdminAgents",securityEnabled:true}]})}
+ const client=new MicrosoftMailClient({...options,nativeAdminAgentsGroupId:"native"})
+ assert.equal(await client.partnerGroupMembershipVerified("configured"),false)
+ nativeId="native"
+ assert.equal(await client.partnerGroupMembershipVerified("configured"),true)
+ assert.equal(await new MicrosoftMailClient(options).partnerGroupMembershipVerified("configured"),false)
+})

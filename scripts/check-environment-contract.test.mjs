@@ -36,7 +36,7 @@ test("static site and renderer phases remain application-specific", () => {
 test("the checked-in inventory is fully classifiable", async () => {
   const inventory = JSON.parse(await readFile(new URL("../docs/environment-inventory.json", import.meta.url), "utf8"))
   const classifications = classifyInventory(inventory)
-  assert.equal(classifications.length, 130)
+  assert.equal(classifications.length, 134)
   for (const name of ["GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"]) {
     assert.equal(classifyEnvironmentName("cms", name).requiredness, "test-only")
     assert.equal(classifyEnvironmentName("cms", name).exposure, "internal")
@@ -46,4 +46,11 @@ test("the checked-in inventory is fully classifiable", async () => {
     assert.equal(classifyEnvironmentName("cms", name).requiredness, "optional")
   }
   assert.ok(classifications.every(({ exposure, phase, requiredness }) => exposure && phase && requiredness))
+})
+
+test("managed mail bootstrap credentials are server-side and scoped to the operation", () => {
+  const classification = classifyEnvironmentName("cms", "MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET")
+  assert.equal(classification.exposure, "secret")
+  assert.equal(classification.phase, "runtime")
+  assert.equal(classification.requiredness, "operation-scoped")
 })

@@ -79,7 +79,8 @@
       "browser-runtime-landing",
       "browser-runtime-renderer",
       "exchange-worker-image",
-      "cms-richtext-dependencies"
+      "cms-richtext-dependencies",
+      "mail-authority-worker"
     ],
     "cms-fast": [
       "cms-no-css",
@@ -114,6 +115,9 @@
     ],
     "site-fast": [
       "site-test"
+    ],
+    "mail-authority": [
+      "mail-authority-worker"
     ]
   },
   "checks": [
@@ -1035,6 +1039,26 @@
         "Exact Node LTS"
       ],
       "risk": "high"
+    },
+    {
+      "id": "mail-authority-worker",
+      "command": "pnpm --dir packages/mail-authority-worker test",
+      "run": [
+        "pnpm",
+        "--dir",
+        "packages/mail-authority-worker",
+        "test"
+      ],
+      "owner": "packages/mail-authority-worker",
+      "ciJob": "cms-tests",
+      "ciContext": "cms-tests (unit-1)",
+      "prerequisites": [
+        "pnpm install --frozen-lockfile",
+        "exact .nvmrc Node LTS",
+        "package-owned Playwright Chromium",
+        "owned temporary filesystem; all provider traffic intercepted"
+      ],
+      "risk": "high"
     }
   ],
   "cmsTestPartitions": [
@@ -1052,7 +1076,9 @@
     "site"
   ],
   "ciDependencies": {
-    "exchange-worker": ["package-quality"],
+    "exchange-worker": [
+      "package-quality"
+    ],
     "cms-test": [
       "cms-tests"
     ],

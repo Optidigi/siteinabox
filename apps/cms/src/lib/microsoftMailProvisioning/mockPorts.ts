@@ -3,11 +3,11 @@ import type { MicrosoftMailProvisioningPorts } from "./workflow.ts"
 
 /** Deterministic local E2E adapter; it never opens a provider connection. */
 export function createMicrosoftMailProvisioningMockPorts(): MicrosoftMailProvisioningPorts {
-  const done: MicrosoftMailProvisioningPorts["tenant_bootstrap"] = async ({ run, request }) => ({
+  const done: MicrosoftMailProvisioningPorts["provider_company"] = async ({ run, request }) => ({
     kind: "complete",
     data: {
       mockProviderCalls: [...(Array.isArray(run.data.mockProviderCalls) ? run.data.mockProviderCalls : []), {
-        provider: "Pax8/Microsoft", operation: "tenant_bootstrap", tenantPrefix: request.tenantPrefix,
+        provider: "Pax8/Microsoft", operation: "provider_company", tenantPrefix: request.tenantPrefix,
         customer: request.customer.companyName,
       }],
       customerTenantId: `mock-${request.tenantPrefix}-tenant`,
@@ -19,7 +19,7 @@ export function createMicrosoftMailProvisioningMockPorts(): MicrosoftMailProvisi
       data: { mockProviderCalls: [...(Array.isArray(run.data.mockProviderCalls) ? run.data.mockProviderCalls : []), { provider, operation, ...extra }] },
     })
   return {
-    tenant_bootstrap: done,
+    provider_company: done,
     tenant_identity: async () => ({ kind: "complete" }),
     mca_acceptance: call("Microsoft Admin Center", "MCA acceptance recorded"),
     gdap: call("Microsoft Graph", "GDAP accepted and access assigned"),

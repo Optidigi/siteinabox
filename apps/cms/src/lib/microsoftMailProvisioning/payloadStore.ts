@@ -56,6 +56,18 @@ export class PayloadMicrosoftMailProvisioningStore implements MicrosoftMailProvi
   }
 
   #map(doc: Record<string, unknown>): MicrosoftMailProvisioningRun {
+    // Legacy receipts mean provider company setup, never Microsoft tenant authority.
+    const step = (value: unknown) => value === "tenant_bootstrap" ? "provider_company" : value
+    const data = doc.data as Record<string, unknown>
+    const states = data?.providerStepStates
+    const legacyStates = states && typeof states === "object" && !Array.isArray(states)
+      ? states as Record<string, unknown> : null
+    const canonicalStates = legacyStates ? Object.fromEntries(Object.entries(legacyStates).filter(([name]) => name !== "tenant_bootstrap")) : {}
+    const mappedData = legacyStates && typeof legacyStates.tenant_bootstrap === "string"
+      ? { ...data, providerStepStates: { ...canonicalStates,
+        provider_company: ["started", "uncertain"].includes(legacyStates.tenant_bootstrap)
+          ? legacyStates.tenant_bootstrap : legacyStates.provider_company ?? legacyStates.tenant_bootstrap } }
+      : data
     return {
       ...doc,
       id: doc.id as string | number,
@@ -66,9 +78,9 @@ export class PayloadMicrosoftMailProvisioningStore implements MicrosoftMailProvi
       tenantPrefix: String(doc.tenantPrefix),
       request: doc.request as MicrosoftMailProvisioningRun["request"],
       state: doc.state as MicrosoftMailProvisioningRun["state"],
-      currentStep: doc.currentStep as MicrosoftMailProvisioningRun["currentStep"],
-      completedSteps: doc.completedSteps as MicrosoftMailProvisioningRun["completedSteps"],
-      data: doc.data as Record<string, unknown>,
+      currentStep: step(doc.currentStep) as MicrosoftMailProvisioningRun["currentStep"],
+      completedSteps: (Array.isArray(doc.completedSteps) ? doc.completedSteps.map(step) : doc.completedSteps) as MicrosoftMailProvisioningRun["completedSteps"],
+      data: mappedData,
       actionUrl: doc.actionUrl as string | null,
       issueCode: doc.issueCode as string | null,
       createdAt: String(doc.createdAt),

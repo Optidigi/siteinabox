@@ -142,7 +142,7 @@ export async function reconcilePax8EmailOrder(formData: FormData) {
     const subscription = await client.getSubscription(service.pax8SubscriptionId)
     if (subscription.companyId !== service.pax8CompanyId || subscription.productId !== quote.productId || subscription.quantity !== quote.targetQuantity || subscription.billingTerm !== "Annual") throw new Error("The provider has not confirmed the expected seat count. Reconcile the pending update before retrying.")
     await store.update(run.id, { state: "subscription_pending", issueCode: null,
-      completedSteps: ["tenant_bootstrap", "subscription", "mca_acceptance", "domain_verification", "dkim_prepare", "dns_prepare", "dns_cutover", "dkim_enable"],
+      completedSteps: ["provider_company", "subscription", "mca_acceptance", "domain_verification", "dkim_prepare", "dns_prepare", "dns_cutover", "dkim_enable"],
       data: { ...run.data, pax8QuantityUpdateConfirmed: true, pax8QuantityUpdateState: "complete", autoProvisionAuthorized: true, targetQuantity: quote.targetQuantity,
         pax8OrderLineItems: [{ productId: quote.productId, subscriptionId: subscription.id, quantity: quote.targetQuantity, billingTerm: "Annual" }], reconciledBy: operator.email, reconciledAt: new Date().toISOString() }, updatedAt: new Date().toISOString() })
     revalidatePath(`/operations/microsoft-mail/${run.id}`)
@@ -162,7 +162,7 @@ export async function reconcilePax8EmailOrder(formData: FormData) {
   }
   await store.update(run.id, { data, state: providerOrderId ? "subscription_pending" : "tenant_pending", issueCode: null,
     request: !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo } : run.request,
-    completedSteps: [...new Set([...run.completedSteps, "tenant_bootstrap" as const, ...(providerOrderId ? ["subscription" as const] : [])])], updatedAt: new Date().toISOString() })
+    completedSteps: [...new Set([...run.completedSteps, "provider_company" as const, ...(providerOrderId ? ["subscription" as const] : [])])], updatedAt: new Date().toISOString() })
   await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { pax8CompanyId: company.id, status: "provisioning" }, overrideAccess: true, context: mailServiceContext })
   revalidatePath(`/operations/microsoft-mail/${run.id}`)
   })
