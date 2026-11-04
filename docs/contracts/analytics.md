@@ -167,12 +167,19 @@ Privacy rules:
   content.
 - Server capture passes properties through the allowlist in `redaction.ts`.
 
-The governance policy requires no direct identifiers and defines a 13-month
-retention target. Provider-managed retention at or below the accepted 84-month
-unenforced ceiling is an external constraint; see SIAB-002. As of 2026-08-07 the
-live project reported 12 months with enforcement disabled. That dated value is
-not a fallback for missing current API data; current query-window readback does
-not establish provider-enforced deletion.
+The governance policy requires no direct identifiers and sets a 396-day ceiling
+for identifiable or pseudonymous analytics. On 2026-11-04 the owner clarified
+that independent physical-deletion proof is not required. Operational assurance
+uses a verified explicit project cleanup policy of at most 11 months, leaving
+headroom for the provider's monthly cleanup, and a fresh daily aggregate showing
+zero queryable events older than 396 days. API failure, missing/invalid policy,
+cached/incomplete age results, over-age events and mutable privacy drift fail.
+
+Query-window fields are informational; neither a missing window nor a plan
+default substitutes for the explicit cleanup policy and age check. The audit
+relies on PostHog's documented cleanup behavior and does not claim independent
+verification of storage or backup deletion. This supersedes the historical
+84-month query-window exception recorded in SIAB-002.
 
 ## Public runtime behavior
 

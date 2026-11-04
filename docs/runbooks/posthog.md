@@ -81,45 +81,43 @@ privacy baseline:
 - `autocapture_opt_out: true`
 - `cookieless_server_hash_mode: 1` (stateless)
 
-Retention is audited by the same command. Legacy project fields may be absent.
-The checker then reads the supported
+Retention is audited by the same command. Read the supported
 [events-retention endpoint](https://posthog.com/docs/api/events-retention) with
-project:read access, independently of the organization settings endpoint.
-The API now separates the explicit `project_retention_months` cleanup policy from
-`retention_months` and `retained_from`, which describe the active query window.
-An explicit policy is checked against the 13-month governance target and the
-provider's allowed range. Its saved value does not prove cleanup has run.
+project:read access. Verify an explicit `project_retention_months` value of
+1–11 months inside the returned provider range. The 11-month upper bound leaves
+headroom for monthly cleanup under our 396-day event-age ceiling. Plan defaults
+and legacy query-window fields cannot substitute for this setting.
 
-The mandatory query-window check is preserved: a positive month count within
-the owner-accepted 84-month ceiling and a valid starting date are required.
-Missing/null/unbounded/invalid effective values, inaccessible readback and values
-above the ceiling fail even when a saved cleanup policy exists. A plan default
-is never substituted for either actual control.
+The audit then executes one fixed SELECT count through the project query API,
+with `refresh: force_blocking`, and requires exactly zero queryable events older
+than 396 days. The API key needs query:read as well as project:read. This POST is
+a read-only aggregate, not event capture or deletion; no event/person rows are
+fetched. A failed request, cached/incomplete/malformed count, over-age data or
+mutable privacy drift fails the check. Requests time out after 15 seconds and
+the scheduled job is bounded to five minutes.
 
-The supported project POST accepts `{"retention_months": N}` with project:write
-and organization-admin authority. It schedules irreversible monthly cleanup;
-setting it is a separately authorized operational change, not a side effect of
-`--check` or settings synchronization. Verify the current allowed range first.
-Keep the project policy and active-window readbacks distinct. No completed
-cleanup or deletion enforcement is inferred from saving a setting.
+The owner clarified on 2026-11-04 that independent physical-deletion proof is
+not mandatory. Query-window fields are informational. Passing means the explicit
+provider cleanup setting, observable event age and mutable privacy baseline
+were verified; it does not prove storage or backup deletion. Provider-managed
+cleanup is relied upon as documented in
+[project retention settings](https://posthog.com/docs/settings/projects#events-retention).
 
-Requests time out after 15 seconds, and the scheduled job is bounded to five
-minutes. Do not substitute session-recording retention for event history.
-
-Run with `--dry-run` to inspect the PATCH payload.
+Changing the policy uses the supported project POST with
+`{"retention_months": N}`, project:write and organization-admin authority.
+Verify the allowed range and impact first. Cleanup is irreversible once executed.
+The checker and settings-sync command never change retention or delete events.
+Run with `--dry-run` to inspect the ordinary settings PATCH payload.
 
 ## Current Project State
 
-This section is external-state evidence, not an executable repository fact.
-Re-run the read-only check before relying on it.
-
-On 2026-11-04, the supported project API accepted a 12-month project policy
-for project `193842`, within its reported 1–12 month range. Readback confirmed
-`project_retention_months: 12`; the separate effective query-window fields
-remained null. An aggregate read found zero events older than 12 months before
-this setting was applied. This is saved-policy evidence, not a deletion receipt.
-The active finite query window remains unverified, so the mandatory audit still
-fails closed. No paid plan change or organization-wide setting was performed.
+This section records dated external evidence; rerun the read-only audit before
+relying on it. On 2026-11-04 the project policy was reduced from 12 to 11 months after a
+read-only impact check found zero events older than 11 months. Readback confirmed
+11 months, and the revised audit passed with zero queryable events older than
+396 days and matching mutable privacy settings. Query-window fields remained
+null. Physical-deletion proof is outside this audit's accepted scope. No
+organization-wide or paid-plan change occurred.
 The dated evidence below remains historical.
 
 PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
