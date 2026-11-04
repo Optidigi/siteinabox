@@ -122,3 +122,14 @@ Canonical run 41868904486 passed its actual image/HTTP/runtime verifier; managed
 files and assembly-resolution evidence match the protocol1 proof, while the
 reviewed entrypoint hash differs. Both Pkcs dispositions are bound to that
 protocol2 image without extending their review deadlines.
+
+## APT package refresh review on 2026-11-04
+
+The complete `875cf9b0` image inventory updates apt/libapt-pkg from 2.8.3 to
+2.8.4ubuntu0.1. All managed files, worker entrypoint and assembly-resolution
+readbacks match the prior qualified runtime. The two scoped Pkcs assessments
+are re-bound to the exact new native/OS inventory; findings, justifications and
+existing deadlines remain applicable. No high-severity waiver or policy rule
+change is introduced. Inventory CI success and release-risk readiness are
+separate checks; publication remains blocked until the current assessment is
+on main and fresh admission validates the selected archive.
