@@ -128,8 +128,8 @@ const patch = {
   cookieless_server_hash_mode: 1,
 }
 
-// Legacy fields are optional. The dedicated endpoint reports a read-only query
-// window; neither response is proof of deletion or a writable retention control.
+// Legacy fields are optional. The dedicated endpoint separately reports the
+// explicit cleanup policy and query window; saved policy does not prove a cleanup ran.
 const retentionBaseline = {
   event_retention_months: retentionMonths,
   events_retention_enforced: true,
@@ -143,6 +143,25 @@ const auditRetention = async (settings) => {
       const retention = await request("GET", undefined,
         `${host}/api/projects/${encodeURIComponent(projectId)}/events_retention/`)
       months = retention.retention_months
+      // The supported custom-policy API now exposes a deletion policy separately
+      // from the legacy query window. Verify the explicit policy against our
+      // governance target, never substitute a plan default for an active control.
+      if (retention.project_retention_months != null) {
+        const configured = retention.project_retention_months
+        if (!Number.isInteger(configured) || configured < 1 || configured > retentionMonths ||
+            retention.min_retention_months != null && configured < retention.min_retention_months ||
+            retention.max_retention_months != null && configured > retention.max_retention_months) {
+          throw new Error("explicit project cleanup policy is invalid, outside the provider range or exceeds the governance target")
+        }
+        if (months != null && (!Number.isInteger(months) || months < 1 || months > ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX ||
+            typeof retention.retained_from !== "string" || !Number.isFinite(Date.parse(retention.retained_from)))) {
+          throw new Error("effective query window is invalid or exceeds the accepted ceiling")
+        }
+        if (months === null && retention.retained_from !== null) throw new Error("inconsistent effective query window")
+        console.log(`PostHog configured event deletion policy: ${configured} months (explicit project override)`)
+        console.log(`PostHog effective query window: ${months == null ? "unknown; no active window reported" : `${months} months`}`)
+        console.log("PostHog monthly cleanup execution: not independently verified; saved policy is not a completed deletion receipt")
+      }
       if (months === null && retention.retained_from === null) {
         throw new Error("no retention window applies; the accepted finite ceiling is unverified")
       }

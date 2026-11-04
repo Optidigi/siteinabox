@@ -81,21 +81,30 @@ privacy baseline:
 - `autocapture_opt_out: true`
 - `cookieless_server_hash_mode: 1` (stateless)
 
-Event-window retention is audited by the same command. Legacy project fields
-may be absent. The checker then uses the read-only
-[events-retention endpoint](https://posthog.com/docs/api/events-retention), with
-project:read access, independently of the organization-scoped settings endpoint.
-It accepts an explicitly returned positive month count within the owner-accepted
-84-month ceiling. Missing/null/unbounded/invalid values, inaccessible readback and
-values above the ceiling fail; historical or plan-default values are never filled in.
+Retention is audited by the same command. Legacy project fields may be absent.
+The checker then reads the supported
+[events-retention endpoint](https://posthog.com/docs/api/events-retention) with
+project:read access, independently of the organization settings endpoint.
+The API now separates the explicit `project_retention_months` cleanup policy from
+`retention_months` and `retained_from`, which describe the active query window.
+An explicit policy is checked against the 13-month governance target and the
+provider's allowed range. Its saved value does not prove cleanup has run.
 
-The endpoint reports [queryable event history](https://posthog.com/docs/data/events-retention),
-not deletion. Enforcement remains unknown when not exposed; a passing check verifies
-mutable settings and the accepted provider window, not provider-enforced deletion
-or the 13-month enforced governance target. SIAB-002 remains an accepted external
-constraint. Retention fields never enter PATCH; no plan/configuration change is
-performed by --check. Requests time out after 15 seconds, and the scheduled job is
-bounded to 5 minutes. Do not substitute session-recording retention for event history.
+The mandatory query-window check is preserved: a positive month count within
+the owner-accepted 84-month ceiling and a valid starting date are required.
+Missing/null/unbounded/invalid effective values, inaccessible readback and values
+above the ceiling fail even when a saved cleanup policy exists. A plan default
+is never substituted for either actual control.
+
+The supported project POST accepts `{"retention_months": N}` with project:write
+and organization-admin authority. It schedules irreversible monthly cleanup;
+setting it is a separately authorized operational change, not a side effect of
+`--check` or settings synchronization. Verify the current allowed range first.
+Keep the project policy and active-window readbacks distinct. No completed
+cleanup or deletion enforcement is inferred from saving a setting.
+
+Requests time out after 15 seconds, and the scheduled job is bounded to five
+minutes. Do not substitute session-recording retention for event history.
 
 Run with `--dry-run` to inspect the PATCH payload.
 
@@ -104,12 +113,14 @@ Run with `--dry-run` to inspect the PATCH payload.
 This section is external-state evidence, not an executable repository fact.
 Re-run the read-only check before relying on it.
 
-On 2026-10-23, read-only [workflow verification](https://github.com/Optidigi/siteinabox/actions/runs/40020252173)
-found legacy retention fields absent and the supported events-retention endpoint
-returned no active window. Mutable privacy settings matched. The accepted finite
-ceiling therefore remains unverified; the audit correctly fails closed. This
-does not establish the lifetime of stored data or deletion enforcement. No
-provider configuration was changed. The dated evidence below remains historical.
+On 2026-11-04, the supported project API accepted a 12-month project policy
+for project `193842`, within its reported 1–12 month range. Readback confirmed
+`project_retention_months: 12`; the separate effective query-window fields
+remained null. An aggregate read found zero events older than 12 months before
+this setting was applied. This is saved-policy evidence, not a deletion receipt.
+The active finite query window remains unverified, so the mandatory audit still
+fails closed. No paid plan change or organization-wide setting was performed.
+The dated evidence below remains historical.
 
 PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 (`193842`) is configured with:

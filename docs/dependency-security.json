@@ -173,8 +173,8 @@
       "url": "https://vuln.go.dev/ID/GO-2026-5932.json",
       "selected": false,
       "role": "advisory",
-      "sha256": "6a685f52c906f24f2b6f96eebaade65cbba74ed674e8c54ba0c4f7a9da1c25d3",
-      "securityHash": "3d9f9f25e28de76e1d9bb7ccdd5882731e31604c84024dc15d56f2cb7bce870f"
+      "sha256": "825258c0f40cf04f470330488d282311d182956a628099e6bc687c2532e4714e",
+      "securityHash": "f47f145a41e5c6aaa41b100f53ab5f3951bb20cc152b988250b4eb23a82d2150"
     },
     {
       "id": "better-auth-maintenance-release",
@@ -243,8 +243,8 @@
       "url": "https://api.github.com/advisories/GHSA-gcqx-w48m-w2h4",
       "kind": "github-advisory",
       "role": "advisory",
-      "sha256": "05e6925c542869eb8ca2b81720d8dcc3983e26adcc489be24671cf18a428317b",
-      "securityHash": "cf91a8a78e701554e3574e3d961a63d7d040df764326ccc0e00ace5c67d5e919"
+      "sha256": "7831f198890e4f702c2a869bb8ca82a6b59a424a7aa0b16e5fe3883a2841f169",
+      "securityHash": "f1b6c84d6626eccf7e17913e08ae250b3ee1d42255899f92464cc79956c2bee9"
     },
     {
       "id": "GHSA-846f-f764-76mx",
@@ -657,26 +657,6 @@
     },
     {
       "scope": "image:exchange-worker",
-      "id": "CVE-2026-103111",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "aaf193d28bffc2ec907af39a6d46e091d5d0f79fd29760c2f1be47a79aafee81",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-103111. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
       "id": "CVE-2026-107161",
       "package": "libsasl2-2",
       "version": "2.1.28+dfsg1-5ubuntu3.1",
@@ -724,9 +704,9 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
+      "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
       "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim. Fresh 2026-11-04 metadata retains moderate severity, the same installed version and no fixed Ubuntu version; existing deadline and under-investigation status are unchanged.",
       "reviewOwner": "Optidigi security maintainer",
       "reviewedAt": "2026-10-28T17:25:26.846Z",
       "deadline": "2026-11-27T17:25:26.846Z",
@@ -744,9 +724,9 @@
       "paths": [
         "os-packages"
       ],
-      "factsHash": "cadf12c535175b3cc478f1e99f7680d836f41c3335b65ea1c89d868cc464491c",
+      "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
       "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim.",
+      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim. Fresh 2026-11-04 metadata retains moderate severity, the same installed version and no fixed Ubuntu version; existing deadline and under-investigation status are unchanged.",
       "reviewOwner": "Optidigi security maintainer",
       "reviewedAt": "2026-10-28T17:25:26.846Z",
       "deadline": "2026-11-27T17:25:26.846Z",
@@ -886,9 +866,9 @@
       ],
       "factsHash": "25f8f68d7ebd9897520c4b9ebb9e1cb81db86b3ed86132b5b870c7f50b93b2ee",
       "state": "not_affected",
-      "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
+      "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried. Fresh 2026-11-04 complete image/native readback revalidates Linux scope after BIND/PCRE OS updates; the managed runtime and existing deadline are unchanged.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-29T18:55:14.543Z",
+      "reviewedAt": "2026-11-04T17:00:19.136Z",
       "deadline": "2026-11-27T17:25:26.846Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
@@ -899,11 +879,11 @@
         "sources": [
           "GHSA-2fmv-rv2c-59x7"
         ],
-        "justification": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried.",
+        "justification": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried. Fresh 2026-11-04 complete image/native readback revalidates Linux scope after BIND/PCRE OS updates; the managed runtime and existing deadline are unchanged.",
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "df6936277291e5ee14f469caa77687a96892eb7d592da8552060b50bb1dc2237",
+          "fingerprint": "93517fd64089eb8fca8932b5a321a97d0c844b00edea013747fdb09a0e95bb95",
           "advisoryHash": "6500b316d2468e37a1cd89762046b9d21f7e20aa278e48d9d463a3cfbf0c91ca"
         }
       }
@@ -917,12 +897,12 @@
       "paths": [
         "usr/local/share/powershell/Modules/ExchangeOnlineManagement/3.10.1/netCore/Microsoft.Exchange.Management.ExoPowershellGalleryModule.deps.json"
       ],
-      "factsHash": "451150da705808aafd0871121c85542c97eef5ab5498acc154eda1914783d191",
+      "factsHash": "e4a6b6d93da8ccaa193b54f3ac59e724cc8ee0889b98e5a48e243e84cb70ac08",
       "state": "not_affected",
-      "reason": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
+      "reason": "Fresh 2026-11-04 exact-image verifier and retained runtime inventory confirm module import plus explicit LoadFrom of private Pkcs 10.0.0 resolve only in Default to host Pkcs 10.0.14 (SHA256 1f90b3863c17268abc78185b09f4ed66d51eac5d191cdf87815cb34d9aa89960), above the unchanged primary fix 10.0.13. PowerShell/module runtime inventory is byte-for-byte equivalent to the previous qualified proof. Native fingerprint is re-bound to updated BIND/PCRE OS packages and dpkg inventory. Re-reviewed for seven days; no DLL replacement, omission or high-severity waiver.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-29T18:55:14.543Z",
-      "deadline": "2026-11-04T17:25:26.846Z",
+      "reviewedAt": "2026-11-04T16:58:10.998Z",
+      "deadline": "2026-11-11T16:58:10.998Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
@@ -932,34 +912,14 @@
         "sources": [
           "GHSA-846f-f764-76mx"
         ],
-        "justification": "The packaged Exchange module import and explicit LoadFrom request for its old private Pkcs resolve exclusively in Default to host Pkcs 10.0.14, above the primary advisory fix 10.0.13. The verifier rejects alternate loaded paths, old host versions or entrypoint changes; no DLL was replaced or omitted.",
+        "justification": "Fresh 2026-11-04 exact-image verifier and retained runtime inventory confirm module import plus explicit LoadFrom of private Pkcs 10.0.0 resolve only in Default to host Pkcs 10.0.14 (SHA256 1f90b3863c17268abc78185b09f4ed66d51eac5d191cdf87815cb34d9aa89960), above the unchanged primary fix 10.0.13. PowerShell/module runtime inventory is byte-for-byte equivalent to the previous qualified proof. Native fingerprint is re-bound to updated BIND/PCRE OS packages and dpkg inventory. Re-reviewed for seven days; no DLL replacement, omission or high-severity waiver.",
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "df6936277291e5ee14f469caa77687a96892eb7d592da8552060b50bb1dc2237",
-          "advisoryHash": "b2cd691e802c1d6154de6a7b2c80e09732aa44e944c330544940033910788859"
+          "fingerprint": "93517fd64089eb8fca8932b5a321a97d0c844b00edea013747fdb09a0e95bb95",
+          "advisoryHash": "93209c72520132e850cd2705e701e85c354da1c74221d72ef09c58fdb52a6706"
         }
       }
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-86145",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "8de7f1c5880c5f0845c867c0364b69ebeb565cfe39b8d7991a482a567d1ff104",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-86145. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
     },
     {
       "scope": "image:exchange-worker",
@@ -1043,166 +1003,6 @@
     },
     {
       "scope": "image:exchange-worker",
-      "id": "CVE-2026-89156",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89156. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89157",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "05aa67c7e94a4aec5f6e8e344db26c87caf6797658815eac5799ded5195f5239",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89157. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89158",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "788903ead309077cee547a22726aa70f45cbd25a4efa72d9016124060f75bead",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89158. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89160",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "8ee5f056be81fec897ddc92b19f47def46acb28c0602b4da68eb7b2fecfde4bd",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89160. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89161",
-      "package": "libpcre2-8-0",
-      "version": "10.42-4ubuntu2.1",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "74621f1d4bb912dcb3a0dacde77583fa3de20e2fd7f75512c550e3207de1bd04",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libpcre2-8-0 10.42-4ubuntu2.1 with CVE-2026-89161. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-94300",
-      "package": "bind9-dnsutils",
-      "version": "1:9.18.39-0ubuntu0.24.04.8",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
-      "state": "under_investigation",
-      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-dnsutils 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-30T10:05:43.748Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-94300",
-      "package": "bind9-host",
-      "version": "1:9.18.39-0ubuntu0.24.04.8",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
-      "state": "under_investigation",
-      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-host 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-30T10:05:43.749Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-94300",
-      "package": "bind9-libs",
-      "version": "1:9.18.39-0ubuntu0.24.04.8",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "f179692f32faa15f1907e937a50ba543bf53ebbe748b08abba01e137596d6e7d",
-      "state": "under_investigation",
-      "reason": "Fresh exact-archive Trivy review retains Ubuntu moderate severity and affected status for bind9-libs 1:9.18.39-0ubuntu0.24.04.8. The vendor severity inventory now also includes Oracle high; the selected Ubuntu severity, affected package, missing fix and existing remediation deadline are unchanged. Upstream CVSS is high; no absence-of-exploitability claim or exception is made. Remediation remains tracked in #136.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-30T10:05:43.749Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
       "id": "CVE-2026-95184",
       "package": "libgnutls30t64",
       "version": "3.8.3-1.1ubuntu3.6",
@@ -1213,26 +1013,6 @@
       "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-95209",
-      "package": "libgnutls30t64",
-      "version": "3.8.3-1.1ubuntu3.6",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95209. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
       "reviewedAt": "2026-10-28T17:25:26.846Z",
       "deadline": "2026-11-27T17:25:26.846Z",
@@ -1336,11 +1116,11 @@
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "5796482b71ed465ce25f589ea10148b835cceec0ffb53b19efcad6afaae8e952",
+      "factsHash": "7cce91daa33f528682ddf04e08986b7721ade180a7a9bc89bba7f15a3b74684d",
       "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reason": "Fresh 2026-11-04 govulncheck 1.9.0 binary and extraction analysis of exact executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains GO-2026-5932 only at module level. All 34,611 extracted symbols contain no OpenPGP package. The revised advisory adds a fixed pseudo-version and separate OpenPGP module; its affected package family remains absent from these exact bytes. Existing review deadline is unchanged.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T18:13:04.395Z",
+      "reviewedAt": "2026-11-04T16:54:15.483Z",
       "deadline": "2026-11-27T18:13:04.395Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
@@ -1351,12 +1131,12 @@
         "sources": [
           "GO-2026-5932"
         ],
-        "justification": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+        "justification": "Fresh 2026-11-04 govulncheck 1.9.0 binary and extraction analysis of exact executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains GO-2026-5932 only at module level. All 34,611 extracted symbols contain no OpenPGP package. The revised advisory adds a fixed pseudo-version and separate OpenPGP module; its affected package family remains absent from these exact bytes. Existing review deadline is unchanged.",
         "binding": {
           "scope": "image:cloudflared",
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
-          "advisoryHash": "4074b7ecb563cc697d5802abc26aca9d45493c3e569dd749f54347dde2e546e0"
+          "advisoryHash": "b57fd1a2665aacb818444ae27ffbbf486d0c0940165f16113fb9b00c14f0cdc9"
         }
       }
     }
