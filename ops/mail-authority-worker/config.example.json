@@ -1,0 +1,28 @@
+{
+  "host": "127.0.0.1",
+  "port": 8082,
+  "liveEnabled": false,
+  "partnerTenantId": "00000000-0000-4000-8000-000000000001",
+  "applicationId": "00000000-0000-4000-8000-000000000003",
+  "partnerAccount": "automation@example.invalid",
+  "applicationName": "Siteinabox mail",
+  "location": "Netherlands",
+  "redirectUri": "https://admin.example.invalid/operations/microsoft-mail/consent/callback",
+  "consentPermissionLabels": {
+    "graph": [],
+    "exchange": []
+  },
+  "stateRoot": "/var/lib/siab-mail-authority",
+  "backupRoot": "/mnt/siab-mail-authority-recovery",
+  "keyFile": "/etc/siteinabox/mail-authority/password.key",
+  "factorKeyFile": "/etc/siteinabox/mail-authority/factor.key",
+  "secretFile": "/etc/siteinabox/mail-authority/service.key",
+  "qualificationFile": "/etc/siteinabox/mail-authority/qualification.json",
+  "backupMount": {
+    "mountPoint": "/mnt/siab-mail-authority-recovery",
+    "fileSystem": "nfs4",
+    "source": "recovery.example.invalid:/mail-authority"
+  },
+  "credentialVersion": "1",
+  "groupId": "00000000-0000-4000-8000-000000000004"
+}
