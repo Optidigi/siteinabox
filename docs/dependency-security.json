@@ -173,8 +173,8 @@
       "url": "https://vuln.go.dev/ID/GO-2026-5932.json",
       "selected": false,
       "role": "advisory",
-      "sha256": "6a685f52c906f24f2b6f96eebaade65cbba74ed674e8c54ba0c4f7a9da1c25d3",
-      "securityHash": "3d9f9f25e28de76e1d9bb7ccdd5882731e31604c84024dc15d56f2cb7bce870f"
+      "sha256": "825258c0f40cf04f470330488d282311d182956a628099e6bc687c2532e4714e",
+      "securityHash": "f47f145a41e5c6aaa41b100f53ab5f3951bb20cc152b988250b4eb23a82d2150"
     },
     {
       "id": "better-auth-maintenance-release",
@@ -243,8 +243,8 @@
       "url": "https://api.github.com/advisories/GHSA-gcqx-w48m-w2h4",
       "kind": "github-advisory",
       "role": "advisory",
-      "sha256": "05e6925c542869eb8ca2b81720d8dcc3983e26adcc489be24671cf18a428317b",
-      "securityHash": "cf91a8a78e701554e3574e3d961a63d7d040df764326ccc0e00ace5c67d5e919"
+      "sha256": "7831f198890e4f702c2a869bb8ca82a6b59a424a7aa0b16e5fe3883a2841f169",
+      "securityHash": "f1b6c84d6626eccf7e17913e08ae250b3ee1d42255899f92464cc79956c2bee9"
     },
     {
       "id": "GHSA-846f-f764-76mx",

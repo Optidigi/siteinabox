@@ -82,3 +82,14 @@ finding, deadline or publication control changes. Exact-source image rescanning
 and the normal release decision are still required before publication.
 
 Primary source: [GHSA-x8rm-f576-gq67](https://github.com/advisories/GHSA-x8rm-f576-gq67).
+
+## Publisher readback on 2026-11-04
+
+Fresh primary advisories changed security fingerprints: GO-2026-5932 now names
+the separate OpenPGP module and a fixed x/crypto pseudo-version; the affected
+package family remains OpenPGP. GHSA-gcqx-w48m-w2h4 now supplies CVE-2026-93753;
+its low severity and deepmerge affected range remain unchanged. Publisher facts
+are reconciled to those exact responses. The existing scoped dispositions,
+issues, deadlines and image-evidence bindings are retained; this metadata update
+does not refresh or waive a failed image finding. Fresh exact-source scans must
+still satisfy every binding before release.
