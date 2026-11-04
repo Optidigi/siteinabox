@@ -93,3 +93,26 @@ are reconciled to those exact responses. The existing scoped dispositions,
 issues, deadlines and image-evidence bindings are retained; this metadata update
 does not refresh or waive a failed image finding. Fresh exact-source scans must
 still satisfy every binding before release.
+
+## Exact-image refresh on 2026-11-04
+
+Canonical run 41868794418 rebuilt every owned image and passed runtime tests.
+Its security gate correctly stopped on changed cloudflared/Exchange metadata
+and newly reported landing libexpat findings. The landing recipe now requests
+[Alpine's fixed libexpat 2.10.0-r0](https://pkgs.alpinelinux.org/package/v3.24/main/x86_64/libexpat); new image verification must prove the old
+2.9.0-r0 findings disappear. No high/unknown finding is waived.
+
+Fresh govulncheck 1.9.0 analysis of the exact cloudflared executable retained
+GO-2026-5932 only at module level; its 34,611 extracted symbols contain no OpenPGP.
+The native fingerprint and existing deadline are unchanged. Fresh Exchange runtime
+proof again resolves the private old Pkcs request only to host 10.0.14 in Default,
+above [Microsoft's 10.0.13 fix](https://github.com/dotnet/runtime/security/advisories/GHSA-846f-f764-76mx); that exact assessment has a new seven-day review.
+The libc-bin/libc6 moderate findings remain under investigation with their
+existing deadline. Raw reports and executable/runtime identities remain retained.
+
+Eleven obsolete Exchange dispositions (seven older PCRE findings, three older
+BIND findings and one gnutls finding) are absent from the fresh complete report
+and are removed from the current verdict. Prior raw reports remain historical
+evidence; absence from the new scanner inventory is not a blanket suppression.
+The Windows-only Pkcs assessment is also re-bound to the reviewed Linux image;
+its existing deadline is unchanged.
