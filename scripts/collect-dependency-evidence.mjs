@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { setTimeout as delay } from "node:timers/promises"
 import { execFileSync, spawnSync } from "node:child_process"
 import { readFile, mkdir, writeFile, realpath } from "node:fs/promises"
 import { dirname, resolve, relative, isAbsolute } from "node:path"
@@ -40,16 +41,37 @@ function assertPublicGitHubMetadata(url) {
 }
 
 /** Credential-free first; only confirmed quota exhaustion may use existing CLI auth. */
-export async function readPublicPublisherJSON(url) {
+export async function readPublicPublisherJSON(url, {
+  maxWaitMs = Number(process.env.SIAB_PUBLIC_METADATA_MAX_WAIT_SECONDS ?? 0) * 1000,
+  nowImpl = Date.now, waitImpl = delay,
+} = {}) {
+  if (!Number.isSafeInteger(maxWaitMs) || maxWaitMs < 0 || maxWaitMs > 3660000) throw new Error("Public metadata wait budget is invalid")
   const parsed = new URL(url)
   if (parsed.hostname === "api.github.com") assertPublicGitHubMetadata(parsed)
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000), redirect: "error",
+  const anonymous = () => fetch(url, { signal: AbortSignal.timeout(30000), redirect: "error",
     headers: { Accept: "application/json" } })
-  if (parsed.hostname === "api.github.com" && response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0") {
+  let response = await anonymous()
+  if (parsed.hostname === "api.github.com" && [403, 429].includes(response.status) && response.headers.get("x-ratelimit-remaining") === "0") {
+    const reset = response.headers.get("x-ratelimit-reset")
+    const retryAfter = Number(response.headers.get("retry-after") ?? 0)
     await response.body?.cancel()
-    return JSON.parse(execFileSync("gh", ["api", parsed.href], { encoding: "utf8", timeout: 30000, maxBuffer: maxOutput }))
+    if (maxWaitMs > 0) {
+      const now = nowImpl(), resetMs = Number(reset) * 1000
+      if (!reset || !/^\d+$/.test(reset) || !Number.isSafeInteger(resetMs) || resetMs <= now ||
+          !Number.isSafeInteger(retryAfter) || retryAfter < 0) throw new Error("Public GitHub quota reset is missing or invalid")
+      const waitMs = Math.max(resetMs - now, retryAfter * 1000) + 1000
+      if (waitMs > maxWaitMs) throw new Error("Public GitHub quota reset exceeds the bounded wait budget")
+      console.error("Waiting for public GitHub metadata quota reset until " + new Date(now + waitMs).toISOString())
+      await waitImpl(waitMs)
+      response = await anonymous() // One fresh anonymous retry; never bypass an authenticated IP policy.
+    } else {
+      return JSON.parse(execFileSync("gh", ["api", parsed.href], { encoding: "utf8", timeout: 30000, maxBuffer: maxOutput }))
+    }
   }
-  if (!response.ok) throw new Error("Primary publisher evidence unavailable: " + parsed.href + " HTTP " + response.status)
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw new Error("Primary publisher evidence unavailable: " + parsed.href + " HTTP " + response.status)
+  }
   const chunks = []; let size = 0
   for await (const chunk of response.body) {
     size += chunk.length

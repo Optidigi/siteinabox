@@ -127,6 +127,26 @@ registry success is a release exception: inspect existing tags/digests read-only
 then obtain a fresh exact-operation approval before a new dispatch. Never rerun
 an approved publication attempt or delete a published artifact as routine cleanup.
 
+## Public publisher metadata and quota resets
+
+Public metadata remains credential-free first. In publication, the collector may
+wait once for GitHub's advertised anonymous quota reset (including Retry-After),
+within a 61-minute budget, then retry the same public endpoint anonymously.
+This follows [GitHub's rate-limit guidance](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#rate-limit-errors).
+Authenticated access can be IP-restricted even when
+[anonymous public access is supported](https://docs.github.com/en/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-allowed-ip-addresses-for-your-organization).
+Do not add credentials, switch endpoints/IPs to evade a limit, or replace fresh
+advisory data with cached facts. Missing/invalid reset headers, an excessive wait,
+a second failed request and ordinary permission refusals fail closed.
+
+The protected publication job is bounded to 90 minutes to accommodate that
+provider reset plus archive verification. No approval, freshness, risk or archive
+identity check is skipped while waiting. Other collectors retain the existing
+confirmed-quota authenticated CLI fallback unless this bounded-wait mode is
+explicitly selected. Dispatch each image sequentially: the global publication
+concurrency group has one pending slot, so queuing all images can cancel older
+pending requests. Wait for one publication to finish before starting the next.
+
 ## Bootstrap and installed controls
 
 Source policy is not evidence of installed protection. Before the first
