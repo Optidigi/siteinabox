@@ -31,7 +31,7 @@ export function assertImageVerificationEvidence({ sha, runId, attempt, image }, 
       evidence.tunnelVerification?.networkNone === true && ["cms", "renderer"].every(kind => evidence.tunnelVerification.targets?.some(target => target.kind === kind && target.knownHostMatched && target.unknownHost404 && target.missingCatchallRejected))
     else if (image === "exchange-worker") valid &&= evidence.runtimePlatform.os === "ubuntu" && hash(evidence.runtimeInventorySha256) && hash(evidence.dpkgInventorySha256) &&
       evidence.commandContract === "passed" && evidence.unauthenticatedStatus === 401 && evidence.health?.healthy === true &&
-      evidence.health.protocolVersion === 1 && evidence.health.dnsToolAvailable === true && /^\d+\.\d+\.\d+$/.test(evidence.health.moduleVersion ?? "")
+      evidence.health.protocolVersion === 2 && evidence.health.dnsToolAvailable === true && /^\d+\.\d+\.\d+$/.test(evidence.health.moduleVersion ?? "")
     else valid &&= evidence.runtimePlatform.os === "alpine" && ["populatedDataPreserved", "schemaPreserved", "migrationHistoryPreserved", "gracefulDatabaseStop", "actualEntrypointRestartPassed", "logicalRestore"].every(key => evidence.postgresRehearsal?.[key] === true) && evidence.postgresRehearsal.lifecycleContract === "passed"
   }
   if (!valid) throw new Error("Image verification evidence is missing or mismatches source, run, attempt, runtime or successful packaged smoke")

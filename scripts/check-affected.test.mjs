@@ -32,3 +32,9 @@ test("CLI selects the original owner when a tracked source file moves into docs"
     assert.equal(result.changedPaths, 2)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+test("mail worker and shared authority changes select the offline controller proof", () => {
+  for (const path of ["packages/mail-authority-worker/src/browser.mjs", "packages/contracts/src/microsoft-mail-authority.ts"]) {
+    assert.deepEqual(affectedProfiles([path]), ["fast", "mail-authority"])
+  }
+})

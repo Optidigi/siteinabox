@@ -1,3 +1,4 @@
+import { requireManagedMailBootstrap } from "./managedBootstrap.ts"
 import "server-only"
 import { inspectMailConfiguration } from "../email/configuration.ts"
 import { exchangeWorkerEndpointAllowed } from "./exchangeWorker.ts"
@@ -26,7 +27,7 @@ const publicOriginPresent = (env: NodeJS.ProcessEnv) => {
 }
 
 /** Presence check only: this never authenticates or contacts a provider. */
-export function inspectMicrosoftMailReadiness(env: NodeJS.ProcessEnv = process.env): MicrosoftMailReadiness {
+export function inspectMicrosoftMailReadiness(env: NodeJS.ProcessEnv = process.env, operation: "initial" | "existing" = "initial"): MicrosoftMailReadiness {
   const mail = inspectMailConfiguration(env)
   const items: MicrosoftMailReadinessItem[] = [
     {
@@ -81,6 +82,13 @@ export function inspectMicrosoftMailReadiness(env: NodeJS.ProcessEnv = process.e
       note: "Production setup links must resolve to the Siteinabox CMS host over HTTPS.",
     },
   ]
+  if (operation === "initial") {
+    let configured = false
+    try { requireManagedMailBootstrap(env); configured = true } catch { /* configuration-only inspection */ }
+    items.push({ key: "managedAuthorityBootstrap", ready: configured && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID?.trim() ?? ""),
+      requiredSettings: ["MICROSOFT_PARTNER_ADMIN_AGENTS_GROUP_ID", "MICROSOFT_MAIL_BOOTSTRAP_WORKER_URL", "MICROSOFT_MAIL_BOOTSTRAP_WORKER_SECRET", "MICROSOFT_MAIL_AUTHORITY_QUALIFIED"],
+      note: "Initial provisioning requires the private unattended worker. This checks settings only; authenticated health and current live qualification are verified before purchase." })
+  }
   const missingSettings = items.flatMap((item) => item.ready ? [] : item.requiredSettings)
   return { readyForLiveProvisioning: missingSettings.length === 0, items, missingSettings }
 }

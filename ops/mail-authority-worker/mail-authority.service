@@ -1,0 +1,30 @@
+[Unit]
+Description=Siteinabox private Microsoft mail authority worker
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/siab-mail-authority-recovery
+ConditionPathIsMountPoint=/mnt/siab-mail-authority-recovery
+
+[Service]
+Type=simple
+User=siab-mail-authority
+Group=siab-mail-authority
+WorkingDirectory=/opt/siteinabox
+ExecStart=/opt/siteinabox-node/bin/node /opt/siteinabox/packages/mail-authority-worker/src/server.mjs /etc/siteinabox/mail-authority/config.json
+Restart=on-failure
+RestartSec=10
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/siteinabox-browsers
+UMask=0077
+LimitCORE=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/siab-mail-authority /mnt/siab-mail-authority-recovery
+
+[Install]
+WantedBy=multi-user.target

@@ -116,3 +116,9 @@ and are removed from the current verdict. Prior raw reports remain historical
 evidence; absence from the new scanner inventory is not a blanket suppression.
 The Windows-only Pkcs assessment is also re-bound to the reviewed Linux image;
 its existing deadline is unchanged.
+
+The mail implementation's protocol2 worker has its own exact native fingerprint.
+Canonical run 41868904486 passed its actual image/HTTP/runtime verifier; managed
+files and assembly-resolution evidence match the protocol1 proof, while the
+reviewed entrypoint hash differs. Both Pkcs dispositions are bound to that
+protocol2 image without extending their review deadlines.

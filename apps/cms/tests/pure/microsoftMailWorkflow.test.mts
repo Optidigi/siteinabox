@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import type { Payload } from "payload"
+import { PayloadMicrosoftMailProvisioningStore } from "../../src/lib/microsoftMailProvisioning/payloadStore.ts"
 import {
   advanceMicrosoftMailProvisioning,
   startMicrosoftMailProvisioning,
@@ -45,7 +47,7 @@ class MemoryStore implements MicrosoftMailProvisioningStore {
 const ports = (overrides: Partial<MicrosoftMailProvisioningPorts> = {}): MicrosoftMailProvisioningPorts => {
   const complete = async () => ({ kind: "complete" as const })
   return {
-    tenant_bootstrap: complete,
+    provider_company: complete,
     tenant_identity: complete,
     mca_acceptance: complete,
     gdap: complete,
@@ -67,7 +69,7 @@ test("mock provisioning completes the ordered provider flow and emails each setu
   const store = new MemoryStore()
   const called: string[] = []
   const allPorts = ports({
-    tenant_bootstrap: async () => { called.push("tenant"); return { kind: "complete" } },
+    provider_company: async () => { called.push("tenant"); return { kind: "complete" } },
     subscription: async ({ request: parsed }) => {
       called.push(`subscription:${parsed.quantity}:${parsed.product}:${parsed.commitment}`)
       return { kind: "complete", data: { pax8SubscriptionId: "mock-subscription" } }
@@ -93,7 +95,7 @@ test("approval wait is resumable and does not repeat completed provider writes",
   let tenantBootstrapCount = 0
   let accepted = false
   const allPorts = ports({
-    tenant_bootstrap: async () => { tenantBootstrapCount += 1; return { kind: "complete" } },
+    provider_company: async () => { tenantBootstrapCount += 1; return { kind: "complete" } },
     mca_acceptance: async () => accepted
       ? { kind: "complete" }
       : { kind: "waiting", state: "consent_pending", code: "mca_acceptance_required", actionUrl: "https://admin.microsoft.com/", message: "Accept MCA" },
@@ -110,7 +112,7 @@ test("approval wait is resumable and does not repeat completed provider writes",
 test("live mode requires explicit confirmation before any provider call", async () => {
   const store = new MemoryStore()
   let calls = 0
-  const allPorts = ports({ tenant_bootstrap: async () => { calls += 1; return { kind: "complete" } } })
+  const allPorts = ports({ provider_company: async () => { calls += 1; return { kind: "complete" } } })
   await assert.rejects(startMicrosoftMailProvisioning({ request, store, ports: allPorts, mode: "live" }), /explicit confirmation/)
   assert.equal(calls, 0)
   assert.equal(store.records.length, 0)
@@ -120,7 +122,7 @@ test("an indeterminate external write stops for reconciliation instead of retryi
   const store = new MemoryStore()
   let attempts = 0
   const allPorts = ports({
-    tenant_bootstrap: async () => {
+    provider_company: async () => {
       attempts += 1
       const error = new Error("provider outcome unknown")
       error.name = "Pax8IndeterminateWriteError"
@@ -169,7 +171,7 @@ test("adds identity verification to an existing in-flight run without rewinding 
 
 test("retries a temporary provider read failure without repeating completed writes",async()=>{
  const store=new MemoryStore();let reads=0,writes=0
- const adapters=ports({tenant_bootstrap:async()=>{writes++;return {kind:"complete"}},tenant_identity:async()=>{
+ const adapters=ports({provider_company:async()=>{writes++;return {kind:"complete"}},tenant_identity:async()=>{
   reads++;if(reads===1)throw Object.assign(new Error("Temporary provider read"),{name:"MicrosoftApiError",status:503})
   return {kind:"complete"}
  }})
@@ -180,4 +182,88 @@ test("retries a temporary provider read failure without repeating completed writ
  assert.equal(ready.state,"ready")
  assert.equal(writes,1)
  assert.equal(reads,2)
+})
+
+test("resuming an automatic run revalidates expired authority without repeating purchases or DNS", async () => {
+ const store = new MemoryStore()
+ const initial = await startMicrosoftMailProvisioning({request,store,ports:ports({dns_cutover:async()=>({kind:"waiting",state:"dns_pending",code:"fixture",message:"Synthetic cutover wait"})}),mode:"mock"})
+ const run = await store.update(initial.id,{mode:"live",data:{...initial.data,autoProvisionAuthorized:true,customerTenantId:"00000000-0000-4000-8000-000000000002"}})
+ const called: string[]=[]
+ const result=await advanceMicrosoftMailProvisioning({run,store,ports:ports({
+  provider_company:async()=>{called.push("purchase");return {kind:"complete"}},
+  gdap:async()=>{called.push("verify-delegation");return {kind:"manual_review",code:"MAIL_AUTHORITY_INSUFFICIENT",data:{mailAuthority:{status:"not_ready"}}}},
+  dns_cutover:async()=>{called.push("cutover");return {kind:"complete"}},
+ })})
+ assert.equal(result.state,"manual_review")
+ assert.equal(result.issueCode,"MAIL_AUTHORITY_INSUFFICIENT")
+ assert.deepEqual(called,["verify-delegation"])
+ assert.equal(result.completedSteps.includes("dns_prepare"),true)
+ assert.deepEqual(result.data.mailAuthority,{status:"not_ready"})
+})
+
+test("expired authority never clears an interrupted consent-write marker",async()=>{
+ const store=new MemoryStore()
+ const initial=await startMicrosoftMailProvisioning({request,store,ports:ports({application_consent:async()=>({kind:"waiting",state:"consent_pending",code:"fixture",message:"Synthetic consent wait"})}),mode:"mock"})
+ const run=await store.update(initial.id,{mode:"live",data:{...initial.data,autoProvisionAuthorized:true,customerTenantId:"00000000-0000-4000-8000-000000000002",providerStepStates:{gdap:"completed",application_consent:"started"}}})
+ let writes=0
+ const result=await advanceMicrosoftMailProvisioning({run,store,ports:ports({application_consent:async()=>{writes++;return {kind:"complete"}}})})
+ assert.equal(result.state,"manual_review")
+ assert.equal(result.issueCode,"provider_step_outcome_unknown")
+ assert.equal(writes,0)
+})
+
+test("authority-only preflight cannot purchase licences or run mailbox/DNS work",async()=>{
+ const store=new MemoryStore()
+ const initial=await startMicrosoftMailProvisioning({request,store,ports:ports({provider_company:async()=>({kind:"waiting",state:"tenant_pending",code:"fixture",message:"Synthetic provider preparation"})}),mode:"mock"})
+ const called:string[]=[]
+ const result=await advanceMicrosoftMailProvisioning({run:initial,store,authorityOnly:true,ports:ports({
+  gdap:async()=>{called.push("gdap");return {kind:"complete"}},application_consent:async()=>{called.push("consent");return {kind:"complete"}},
+  subscription:async()=>{called.push("purchase");return {kind:"complete"}},mailbox_users:async()=>{called.push("users");return {kind:"complete"}},dns_cutover:async()=>{called.push("cutover");return {kind:"complete"}},
+ })})
+ assert.deepEqual(called,["gdap","consent"])
+ assert.equal(result.state,"consent_pending")
+ assert.equal(result.completedSteps.includes("subscription"),false)
+ assert.equal(result.completedSteps.includes("application_consent"),true)
+})
+
+test("an authorized seat increase resumes mailbox work with its authority checkpoints retained",async()=>{
+ const store=new MemoryStore()
+ const initial=await startMicrosoftMailProvisioning({request,store,ports:ports({provider_company:async()=>({kind:"waiting",state:"tenant_pending",code:"fixture",message:"Synthetic provider preparation"})}),mode:"mock"})
+ const verified=await advanceMicrosoftMailProvisioning({run:initial,store,authorityOnly:true,ports:ports()})
+ const purchased=await store.update(verified.id,{state:"consent_pending",completedSteps:[...verified.completedSteps,"provider_company","subscription","mca_acceptance","domain_verification","dkim_prepare","dns_prepare","dns_cutover","dkim_enable"]})
+ let mailboxes=0
+ const result=await advanceMicrosoftMailProvisioning({run:purchased,store,ports:ports({
+  gdap:async()=>{throw Error("Must retain completed authority")},application_consent:async()=>{throw Error("Must retain resource grants")},subscription:async()=>{throw Error("Must not repeat purchase")},
+  mailbox_users:async()=>{mailboxes++;return {kind:"complete"}},
+ })})
+ assert.equal(result.state,"ready")
+ assert.equal(mailboxes,1)
+})
+
+test("a failed fresh authority pass invalidates prior ready evidence before any seat purchase",async()=>{
+ const {evaluateMailAuthority,requiredMailRoleIds,mailAuthorityCurrent}=await import("../../src/lib/microsoftMailProvisioning/mailAuthority.ts")
+ const customerId="00000000-0000-4000-8000-000000000002"
+ for(const outcome of [
+  {kind:"waiting" as const,state:"consent_pending" as const,code:"GDAP_ACCESS_ASSIGNMENT_PENDING",message:"Synthetic assignment wait"},
+  {kind:"manual_review" as const,code:"GDAP_CUSTOMER_MISMATCH"},
+ ]){
+  const store=new MemoryStore()
+  const initial=await startMicrosoftMailProvisioning({request,store,ports:ports({dns_cutover:async()=>({kind:"waiting",state:"dns_pending",code:"fixture",message:"Synthetic cutover wait"})}),mode:"mock"})
+  const ready=evaluateMailAuthority({tenantId:customerId,relationshipTenantId:customerId,relationshipId:"r",relationshipStatus:"active",assignmentId:"a",assignmentStatus:"active",groupId:"g",assignedGroupId:"g",approvedRoleIds:requiredMailRoleIds,assignedRoleIds:requiredMailRoleIds,resourcesVerified:true})
+  const run=await store.update(initial.id,{mode:"live",data:{...initial.data,customerTenantId:customerId,autoProvisionAuthorized:true,mailAuthority:ready}})
+  const result=await advanceMicrosoftMailProvisioning({run,store,authorityOnly:true,ports:ports({gdap:async()=>outcome})})
+  assert.equal(result.completedSteps.includes("gdap"),false)
+  assert.equal(result.completedSteps.includes("application_consent"),false)
+  assert.equal(mailAuthorityCurrent(result.data.mailAuthority,customerId),false)
+ }
+})
+
+test("loads legacy company receipts under their commercial meaning without losing write evidence",async()=>{
+ const legacy={id:18,currentStep:"tenant_bootstrap",completedSteps:["tenant_bootstrap","subscription"],data:{providerStepStates:{subscription:"complete",tenant_bootstrap:"uncertain"},pax8OrderId:"kept-order"}}
+ const payload={findByID:async()=>legacy} as unknown as Payload
+ const run=await new PayloadMicrosoftMailProvisioningStore(payload).get(18)
+ assert.equal(run?.currentStep,"provider_company")
+ assert.deepEqual(run?.completedSteps,["provider_company","subscription"])
+ assert.equal(run?.data.pax8OrderId,legacy.data.pax8OrderId)
+ assert.deepEqual(run?.data.providerStepStates,{subscription:"complete",provider_company:"uncertain"})
 })

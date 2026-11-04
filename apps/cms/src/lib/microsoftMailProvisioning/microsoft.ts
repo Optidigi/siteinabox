@@ -1,8 +1,9 @@
+import { mailApplicationResources } from "@siteinabox/contracts/microsoft-mail-authority"
 import "server-only"
 import { createHash, randomUUID } from "node:crypto"
 
 export type MicrosoftResource = "graph" | "partner_center" | "exchange"
-export const MICROSOFT_MAIL_APPLICATION_GRANT_VERSION = "microsoft-mail-app-grants-v1"
+export const MICROSOFT_MAIL_APPLICATION_GRANT_VERSION = "microsoft-mail-app-grants-v2"
 
 export type MicrosoftTokenProvider = (input: {
   tenantId: string
@@ -50,13 +51,15 @@ export class MicrosoftApiError extends Error {
   readonly operation: string
   readonly status: number
   readonly code: string | null
+  readonly retryable: boolean | null
 
-  constructor(operation: string, status: number, code: string | null) {
+  constructor(operation: string, status: number, code: string | null, retryable: boolean | null = null) {
     super(`Microsoft ${operation} failed with HTTP ${status}${code ? ` (${code})` : ""}.`)
     this.name = "MicrosoftApiError"
     this.operation = operation
     this.status = status
     this.code = code
+    this.retryable = retryable
   }
 }
 
@@ -74,6 +77,7 @@ export type MicrosoftMailClientOptions = {
   partnerTenantId: string
   clientId: string
   accessToken: MicrosoftTokenProvider
+  nativeAdminAgentsGroupId?: string
   appConsentRedirectUri?: string
   fetchImpl?: typeof fetch
   graphBase?: string
@@ -98,7 +102,8 @@ const responseJson = async (response: Response): Promise<unknown> => {
 
 const errorCode = (body: unknown): string | null => {
   const error = object(object(body).error)
-  return stringValue(error.code) ?? stringValue(error.error_description)
+  const code = stringValue(error.code) ?? stringValue(object(body).errorName)
+  return code && /^[A-Za-z0-9_.-]{1,80}$/.test(code) ? code : null
 }
 
 const encodePath = (value: string): string => encodeURIComponent(value.trim())
@@ -106,6 +111,7 @@ const encodePath = (value: string): string => encodeURIComponent(value.trim())
 export class MicrosoftMailClient {
   readonly #partnerTenantId: string
   readonly #clientId: string
+  readonly #nativeAdminAgentsGroupId: string | null
   readonly #accessToken: MicrosoftTokenProvider
   readonly #appConsentRedirectUri: string | null
   readonly #fetch: typeof fetch
@@ -115,6 +121,7 @@ export class MicrosoftMailClient {
   constructor(options: MicrosoftMailClientOptions) {
     this.#partnerTenantId = options.partnerTenantId.trim()
     this.#clientId = options.clientId.trim()
+    this.#nativeAdminAgentsGroupId = options.nativeAdminAgentsGroupId?.trim().toLowerCase() || null
     this.#accessToken = options.accessToken
     this.#appConsentRedirectUri = options.appConsentRedirectUri?.trim() || null
     if (this.#appConsentRedirectUri && new URL(this.#appConsentRedirectUri).protocol !== "https:") {
@@ -209,15 +216,15 @@ export class MicrosoftMailClient {
     return { requestId: result.id }
   }
 
-  async #listGraphPages<T>(route: string): Promise<T[]> {
+  async #listGraphPages<T>(route: string, tenantId = this.#partnerTenantId, query: Record<string, string> = {}, headers?: Record<string, string>): Promise<T[]> {
     const rows: T[] = []
-    let path = `${route}?$top=100`
+    let path = `${route}?${new URLSearchParams({ ...query, "$top": "100" })}`
     const visited = new Set<string>()
     while (path) {
       if (visited.has(path) || visited.size >= 50) throw new Error("Invalid GDAP pagination cycle or limit.")
       visited.add(path)
       const page = await this.#request<{ value?: T[]; "@odata.nextLink"?: string }>({
-        resource: "graph", tenantId: this.#partnerTenantId, method: "GET", path, operation: "GDAP discovery",
+        resource: "graph", tenantId, method: "GET", path, operation: "Graph discovery", ...(headers ? { headers } : {}),
       })
       if (!Array.isArray(page.value)) throw new Error("Invalid GDAP discovery response.")
       rows.push(...page.value)
@@ -286,10 +293,7 @@ export class MicrosoftMailClient {
   }
 
   async consentCustomerApplication(customerTenantId: string, requestId: string, resource?: "graph" | "exchange"): Promise<void> {
-    const grants = [
-      { enterpriseApplicationId: "00000003-0000-0000-c000-000000000000", scope: "Organization.Read.All, Domain.ReadWrite.All, User.ReadWrite.All, LicenseAssignment.ReadWrite.All" },
-      { enterpriseApplicationId: "00000002-0000-0ff1-ce00-000000000000", scope: "Exchange.Manage" },
-    ]
+    const grants = mailApplicationResources.map(resource => ({ enterpriseApplicationId: resource.resourceApplicationId, scope: resource.scopes.join(", ") }))
     // Partner Center requires a separate consent request for each resource.
     for (const [index, grant] of grants.entries()) {
       if (resource && (index === 0 ? "graph" : "exchange") !== resource) continue
@@ -301,6 +305,34 @@ export class MicrosoftMailClient {
         body: { applicationId: this.#clientId, displayName: "Siteinabox mail", applicationGrants: [grant] },
       })
     }
+  }
+
+  /** Effective partner principal must belong to the configured workload group and native AdminAgents. */
+  async partnerGroupMembershipVerified(groupId: string): Promise<boolean> {
+    if (!this.#nativeAdminAgentsGroupId) return false
+    const groups = (await this.#listGraphPages<unknown>("/me/transitiveMemberOf/microsoft.graph.group", this.#partnerTenantId,
+      { "$select": "id,displayName,securityEnabled", "$count": "true" }, { ConsistencyLevel: "eventual" })).map(object)
+    const native = groups.filter(group => typeof group.id === "string" && group.id.toLowerCase() === this.#nativeAdminAgentsGroupId && group.securityEnabled === true)
+    return native.length === 1 && groups.some(group => typeof group.id === "string" && group.id.toLowerCase() === groupId.toLowerCase() && group.securityEnabled === true)
+  }
+
+  /** Read back actual tenant-wide grants; a successful token/read is not write-scope evidence. */
+  async customerApplicationGrantsVerified(customerTenantId: string): Promise<boolean> {
+    const graphApp = mailApplicationResources[0].resourceApplicationId, exchangeApp = mailApplicationResources[1].resourceApplicationId
+    const appIds = [this.#clientId, graphApp, exchangeApp]
+    const principals = await this.#listGraphPages<{ id?: string; appId?: string }>("/servicePrincipals", customerTenantId,
+      { "$filter": appIds.map(id => `appId eq '${id.replaceAll("'", "''")}'`).join(" or "), "$select": "id,appId" })
+    const ids = appIds.map(appId => principals.filter(principal => principal.appId?.toLowerCase() === appId.toLowerCase()))
+    if (ids.some(matches => matches.length !== 1 || !matches[0]?.id)) return false
+    const [clientId, graphId, exchangeId] = ids.map(matches => matches[0]!.id!)
+    const grants = await this.#listGraphPages<{ clientId?: string; resourceId?: string; consentType?: string; scope?: string }>("/oauth2PermissionGrants", customerTenantId,
+      { "$filter": `clientId eq '${clientId!.replaceAll("'", "''")}'`, "$select": "clientId,resourceId,consentType,scope" })
+    const has = (resourceId: string | undefined, scopes: readonly string[]) => {
+      const granted = new Set(grants.filter(grant => grant.clientId === clientId && grant.resourceId === resourceId && grant.consentType === "AllPrincipals")
+        .flatMap(grant => typeof grant.scope === "string" ? grant.scope.split(/\s+/) : []))
+      return scopes.every(scope => granted.has(scope))
+    }
+    return has(graphId, mailApplicationResources[0].scopes) && has(exchangeId, mailApplicationResources[1].scopes)
   }
 
   async getDomain(customerTenantId: string, domain: string): Promise<MicrosoftDomain | null> {
@@ -512,7 +544,7 @@ export class MicrosoftMailClient {
       if (input.method !== "GET" && (response.status === 408 || response.status >= 500)) {
         throw new MicrosoftIndeterminateWriteError(input.operation)
       }
-      throw new MicrosoftApiError(input.operation, response.status, errorCode(payload))
+      throw new MicrosoftApiError(input.operation, response.status, errorCode(payload), typeof object(payload).isRetryable === "boolean" ? object(payload).isRetryable as boolean : null)
     }
     return payload as T
   }

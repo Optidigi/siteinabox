@@ -1,5 +1,8 @@
 # Outbound mail contract
 
+Microsoft mailbox provisioning has a separate customer/provider journey and
+setup-notice contract; see [Microsoft mail provisioning](microsoft-mail-provisioning.md).
+
 Cloudflare Email Sending remains the provider boundary: complete mail-scoped
 REST configuration takes precedence; SMTP is the fallback when no REST mail
 token is configured. The DNS automation token is never used for sending.

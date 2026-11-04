@@ -159,6 +159,9 @@ jobs:
       - name: Early commerce failure rehearsals
         if: matrix.part == 'unit-1'
         run: pnpm --dir apps/cms check:commerce-release
+      - name: Verify unattended mail authority worker offline
+        if: matrix.part == 'unit-1'
+        run: pnpm --dir packages/mail-authority-worker test
       - name: Execute complete isolated CMS test partition
         run: node scripts/run-cms-tests.mjs ${{ matrix.part }}
         env:

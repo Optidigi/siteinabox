@@ -1,3 +1,5 @@
+import { createMicrosoftMailLiveClients } from "./livePorts"
+import { requireManagedMailBootstrap } from "./managedBootstrap"
 import { mailActorCanOrder } from "./customerAuthority"
 import { externalMailPaymentForQuote, externalMailPaymentSchema } from "./externalPayment"
 import { requireMailDomainEnabled } from "./rollout"
@@ -141,9 +143,25 @@ export async function acceptMailOrder(payload: Payload, input: { runId: number; 
     if (quote.quantity !== run.request.quantity || quote.quantity !== run.request.mailboxUsers.length) throw new Error("The mailbox request changed. Prepare a new quote.")
     if (quote.serviceId !== service.id || run.domain !== service.domain || Date.parse(quote.expiresAt) <= Date.now()) throw new Error("This quote has expired. Submit the mailbox details again.")
     if (quote.operation === "initial" && service.status !== "draft" || quote.operation !== "initial" && service.status !== "active") throw new Error("This email service changed. Request an updated quote.")
-    if (process.env.MICROSOFT_MAIL_CHECKOUT_ENABLED !== "true" || process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness().readyForLiveProvisioning) throw new Error("Email ordering is not available until provider setup is complete.")
+    if (process.env.MICROSOFT_MAIL_CHECKOUT_ENABLED !== "true" || process.env.MICROSOFT_MAIL_LIVE_PROVISIONING_ENABLED !== "true" || !inspectMicrosoftMailReadiness(process.env, quote.operation === "initial" ? "initial" : "existing").readyForLiveProvisioning) throw new Error("Email ordering is not available until provider setup is complete.")
+    if (quote.operation === "initial") {
+      try { if (!await requireManagedMailBootstrap().ready()) throw new Error("MAIL_BOOTSTRAP_NOT_QUALIFIED") }
+      catch {
+        payload.logger.warn({event:"mail_authority_admission_blocked",code:"MAIL_BOOTSTRAP_NOT_QUALIFIED"}, "Unattended mail bootstrap is not qualified.")
+        throw new Error("Email setup is temporarily unavailable. Please try again later.")
+      }
+    }
     await createPartnerTokenProvider(payload)({ tenantId: process.env.MICROSOFT_PARTNER_TENANT_ID ?? "", resource: "partner_center" })
-    await new ExchangeWorkerClient({ endpoint: process.env.EXCHANGE_WORKER_URL ?? "", sharedSecret: process.env.EXCHANGE_WORKER_SHARED_SECRET ?? "" }).health()
+    // Renewal preserves the commercial subscription without changing Microsoft workloads.
+    if (quote.operation !== "renewal") {
+      try {
+        if (!await createMicrosoftMailLiveClients({payload}).microsoft.partnerGroupMembershipVerified(process.env.MICROSOFT_PARTNER_SECURITY_GROUP_ID ?? "")) throw new Error("MICROSOFT_PARTNER_GROUP_REQUIRED")
+      } catch {
+        payload.logger.warn({event:"mail_authority_admission_blocked",code:"MICROSOFT_PARTNER_GROUP_VERIFICATION_REQUIRED"}, "Microsoft mail authority prerequisite is unavailable.")
+        throw new Error("Email setup is temporarily unavailable. Please try again later.")
+      }
+      await new ExchangeWorkerClient({ endpoint: process.env.EXCHANGE_WORKER_URL ?? "", sharedSecret: process.env.EXCHANGE_WORKER_SHARED_SECRET ?? "" }).health()
+    }
     if (input.legalLocale !== undefined && input.legalLocale !== "nl" && input.legalLocale !== "en") throw new Error("Unsupported legal language.")
     const legal = await checkoutLegalDocuments(payload, input.legalLocale ?? (input.actor.language === "nl" ? "nl" : "en"))
     if (!legal || !("id" in legal.terms) || !("id" in legal.privacy)) throw new Error("The current agreements are unavailable. Contact Siteinabox.")

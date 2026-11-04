@@ -49,7 +49,7 @@ extraction or manifest use. Changing module bytes requires a reviewed catalog up
 function and substitutes Exchange commands; it checks delegated identity,
 read access, licensed-mailbox protection, alias conflicts and DKIM DNS gating.
 It never connects to Microsoft. Run an authenticated `/health` smoke on the
-actual candidate container as well; it must report protocolVersion1, installed
+actual candidate container as well; it must report protocolVersion2, installed
 Exchange module and `dig`. Scan/review OS and PowerShell/module dependencies
 through the deployment security process, then retain the image archive, hashes,
 source revision and smoke evidence. Publish only those approved bytes under

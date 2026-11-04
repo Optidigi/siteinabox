@@ -35,9 +35,12 @@ test("worker and PostgreSQL use their own runtime contracts without fabricated N
       runtimePlatform: { architecture: "amd64", os: image === "postgres" ? "alpine" : "ubuntu", version: "24.04" },
       runtimeVersion: image === "postgres" ? "18.6" : "7.6.9" }
     delete native.nodeVersion; delete native.nodeLts; delete native.buildNodeLts
-    if (image === "exchange-worker") Object.assign(native, { runtimeInventorySha256: "e".repeat(64), dpkgInventorySha256: "f".repeat(64), commandContract: "passed", unauthenticatedStatus: 401, health: { healthy: true, protocolVersion: 1, dnsToolAvailable: true, moduleVersion: "3.10.1" } })
+    if (image === "exchange-worker") Object.assign(native, { runtimeInventorySha256: "e".repeat(64), dpkgInventorySha256: "f".repeat(64), commandContract: "passed", unauthenticatedStatus: 401, health: { healthy: true, protocolVersion: 2, dnsToolAvailable: true, moduleVersion: "3.10.1" } })
     else native.postgresRehearsal = { populatedDataPreserved: true, schemaPreserved: true, migrationHistoryPreserved: true, gracefulDatabaseStop: true, actualEntrypointRestartPassed: true, logicalRestore: true, lifecycleContract: "passed" }
     assertImageVerificationEvidence({ ...request, image }, native)
+    if (image === "exchange-worker") for (const protocolVersion of [1, 3, undefined]) {
+      assert.throws(() => assertImageVerificationEvidence({ ...request, image }, { ...native, health: { ...native.health, protocolVersion } }))
+    }
     for (const mutation of [{ runtimeVersion: null }, { archiveIdentity: null }, { sourceSHA: "c".repeat(40) }, image === "postgres" ? { postgresRehearsal: {} } : { runtimeInventorySha256: null }]) assert.throws(() => assertImageVerificationEvidence({ ...request, image }, { ...native, ...mutation }))
   }
 })
