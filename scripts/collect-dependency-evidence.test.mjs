@@ -117,3 +117,74 @@ test("selected release assets are hashed while unrelated counters remain irrelev
   await assert.rejects(fetchPublisherFact({ ...descriptor, assets: ["missing"] }, { readGitHubJSON }), /missing or ambiguous/)
   await assert.rejects(fetchPublisherFact({ ...descriptor, assets: ["fixture.tar.gz", "fixture.tar.gz"] }, { readGitHubJSON }), /malformed/)
 })
+
+test("publication waits for the advertised anonymous reset and retries fresh public metadata once", async () => {
+  const root = await mkdtemp(join(tmpdir(), "siab-public-reset-"))
+  const originalFetch = globalThis.fetch, originalPath = process.env.PATH
+  try {
+    await writeFile(join(root, "gh"), "#!/bin/sh\nexit 9\n"); await chmod(join(root, "gh"), 0o700)
+    process.env.PATH = root + ":" + originalPath
+    for (const status of [403, 429]) {
+      let calls = 0; const waits = []
+      globalThis.fetch = async (_url, options) => {
+        assert.equal(options.headers.Authorization, undefined)
+        calls++
+        return calls === 1 ? new Response("quota", { status, headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1002" } })
+          : Response.json({ fresh: true })
+      }
+      assert.deepEqual(await readPublicPublisherJSON("https://api.github.com/repos/aquasecurity/trivy/releases/tags/v0.76.1", {
+        maxWaitMs: 5000, nowImpl: () => 1000000, waitImpl: async ms => { waits.push(ms) },
+      }), { fresh: true })
+      assert.deepEqual(waits, [3000]); assert.equal(calls, 2)
+    }
+  } finally { globalThis.fetch = originalFetch; process.env.PATH = originalPath; await rm(root, { recursive: true, force: true }) }
+})
+
+test("publication refuses missing or excessive reset waits and never retries permission denials", async () => {
+  const originalFetch = globalThis.fetch, originalPath = process.env.PATH
+  const root = await mkdtemp(join(tmpdir(), "siab-public-reset-denied-"))
+  try {
+    await writeFile(join(root,"gh"),"#!/bin/sh\nexit 9\n");await chmod(join(root,"gh"),0o700);process.env.PATH=root+":"+originalPath
+    for (const reset of [undefined, "bad", "999", "1010"]) {
+      let calls = 0
+      globalThis.fetch = async () => { calls++; return new Response("quota", { status:403, headers:{"x-ratelimit-remaining":"0", ...(reset ? {"x-ratelimit-reset":reset} : {})} }) }
+      await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test", {
+        maxWaitMs:5000, nowImpl:()=>1000000, waitImpl:async()=>{throw Error("must not wait")},
+      }), /reset|budget/)
+      assert.equal(calls,1)
+    }
+    let calls = 0
+    globalThis.fetch = async () => { calls++;return new Response("IP access denied",{status:403}) }
+    await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test",{
+      maxWaitMs:5000,waitImpl:async()=>{throw Error("must not wait")},
+    }),/HTTP 403/)
+    assert.equal(calls,1)
+  } finally {globalThis.fetch=originalFetch;process.env.PATH=originalPath;await rm(root,{recursive:true,force:true})}
+})
+
+test("a second quota response fails closed rather than looping or accepting stale evidence", async()=>{
+ const originalFetch=globalThis.fetch,originalPath=process.env.PATH
+ const root=await mkdtemp(join(tmpdir(),"siab-public-reset-repeat-"))
+ try {
+  await writeFile(join(root,"gh"),"#!/bin/sh\nexit 9\n");await chmod(join(root,"gh"),0o700);process.env.PATH=root+":"+originalPath
+  let calls=0
+  globalThis.fetch=async()=>{calls++;return new Response("quota",{status:403,headers:{"x-ratelimit-remaining":"0","x-ratelimit-reset":"1002"}})}
+  await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test",{
+   maxWaitMs:5000,nowImpl:()=>1000000,waitImpl:async()=>{},
+  }),/HTTP 403/)
+  assert.equal(calls,2)
+ }finally{globalThis.fetch=originalFetch;process.env.PATH=originalPath;await rm(root,{recursive:true,force:true})}
+})
+
+test("publication also honors Retry-After and refuses an invalid retry budget", async()=>{
+ const originalFetch=globalThis.fetch
+ try{
+  let calls=0;const waits=[]
+  globalThis.fetch=async()=>++calls===1?new Response("quota",{status:429,headers:{"x-ratelimit-remaining":"0","x-ratelimit-reset":"1002","retry-after":"10"}}):Response.json({fresh:true})
+  assert.deepEqual(await readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test",{
+   maxWaitMs:15000,nowImpl:()=>1000000,waitImpl:async ms=>{waits.push(ms)},
+  }),{fresh:true})
+  assert.deepEqual(waits,[11000])
+  for(const maxWaitMs of [-1,NaN,3660001]) await assert.rejects(readPublicPublisherJSON("https://api.github.com/advisories/GHSA-test-test-test",{maxWaitMs}),/budget/)
+ }finally{globalThis.fetch=originalFetch}
+})

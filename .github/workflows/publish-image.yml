@@ -29,7 +29,7 @@ jobs:
   publish:
     if: github.ref == 'refs/heads/main' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     environment: ghcr-publish
     permissions:
       contents: read
@@ -41,6 +41,7 @@ jobs:
       IMAGE: ${{ inputs.image }}
       SOURCE_SHA: ${{ inputs.source_sha }}
       VERIFICATION_RUN_ID: ${{ inputs.verification_run_id }}
+      SIAB_PUBLIC_METADATA_MAX_WAIT_SECONDS: "3660"
     steps:
       - name: Checkout trusted publication policy
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
