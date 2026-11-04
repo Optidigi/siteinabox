@@ -13,7 +13,7 @@ removed, or changes role or processing location.
 | Openprovider | Domain registration and management | Confirm registrant and contact data flow |
 | Mollie | Payment processing | Confirm controller/processor allocation and retention |
 | Moneybird | Accounting and invoicing | Confirm actual integration and data fields |
-| PostHog Cloud EU | Product and tenant-site analytics | IP anonymization enabled; enforce 13-month event retention |
+| PostHog Cloud EU | Product and tenant-site analytics | IP anonymization enabled; explicit cleanup policy ≤11 months and 396-day observable event-age audit; provider-managed deletion is not independently verified |
 | Google Analytics 4 / Google Ireland Limited | Consent-gated analytics for `siteinabox.nl` only | Verify GA4 property retention; Google signals and advertising features disabled |
 | KVK | Public business-data lookup | Confirm terms and request logging |
 | Microsoft / Pax8 | Professional email add-on where selected | Confirm actual sold product and reseller chain |

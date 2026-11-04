@@ -32,28 +32,25 @@ constraints here even after the related issue is closed.
 - **Next:** Reproduce the exact snapshot, variant, viewport, and color mode; fix
   only a demonstrated shared-renderer cause.
 
-## SIAB-002 — PostHog retention exceeds the governance target
+## SIAB-002 — PostHog retention assurance
 
-- **Classification:** Accepted external constraint; current ceiling verification
-  unresolved. Historical provider-readback confidence does not establish current state.
+- **Classification:** Owner-approved operational verification boundary.
 - **Scope:** Analytics privacy and operations.
-- **Evidence:** PostHog MCP and API verification on 2026-08-07 found event
-  retention set to 12 months with enforcement disabled (previously 84 months
-  on 2026-07-11). Repository governance requires 13 months with enforcement.
-  The privacy audit logs this governance gap and fails when the provider window
-  exceeds the accepted 84-month ceiling, cannot be verified, or mutable privacy
-  settings drift. Current readback uses the dedicated events-retention endpoint
-  when legacy project fields are absent; a query window is not deletion proof.
-  On 2026-10-23 the supported endpoint reported no active window, so the current
-  finite ceiling is unverified and the daily read-only audit fails closed.
-- **Disposition:** On 2026-07-18, the owner explicitly accepted plan-derived,
-  unenforced provider retention as an external constraint within an 84-month
-  ceiling. No implementation action remains while retention stays at or below
-  that ceiling. This acceptance does not represent the current provider value
-  as the repository governance target or as provider-enforced deletion.
-- **Review trigger:** Reopen only if the PostHog plan/API gains a supported
-  13-month enforcement control, applicable legal obligations change, or the
-  actual provider retention exceeds the accepted 84-month ceiling.
+- **Historical evidence:** The old check accepted a finite provider query window
+  up to 84 months as an external constraint. Null effective query fields caused
+  it to fail even after the supported project API stored a 12-month cleanup
+  policy. Query visibility did not establish physical deletion.
+- **Disposition:** On 2026-11-04 the owner clarified that independent physical
+  deletion proof is not mandatory. The audit now requires an explicit project
+  cleanup policy of at most 11 months (monthly-cleanup headroom) and a fresh
+  zero count of queryable events older than the 396-day ceiling, alongside the
+  existing mutable privacy baseline. Missing/malformed policy, failed or cached
+  queries and over-age data fail closed. Plan defaults are never inferred.
+- **Assurance limit:** PostHog's documented provider-managed cleanup is relied
+  upon. A query count does not prove storage/backup deletion, and the audit does
+  not make that claim. No support contact or paid-plan change is required.
+- **Review trigger:** Policy drift, over-age observations, provider API/cleanup
+  contract changes or a new requirement for independent deletion evidence.
 
 ## SIAB-003 — Legal-notice interaction needs production smoke
 

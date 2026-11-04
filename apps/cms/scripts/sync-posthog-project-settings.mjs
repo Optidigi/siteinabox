@@ -3,10 +3,10 @@
 const DEFAULT_HOST = "https://app.posthog.com"
 const DEFAULT_WEB_VITALS = ["CLS", "FCP", "INP", "LCP"]
 const DEFAULT_EVENT_RETENTION_MONTHS = 13
-// SIAB-002: plan-derived retention remains outside the 13-month governance
-// target. Fail the audit only when provider retention exceeds this accepted
-// ceiling; otherwise log the governance gap and keep mutable settings strict.
-const ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX = 84
+// Owner-approved operational assurance: explicit cleanup policy plus observable
+// event age, without independent physical-deletion or query-window proof.
+const MAX_CLEANUP_MONTHS = 11 // Leaves headroom for monthly cleanup under 396 days.
+const MAX_EVENT_AGE_DAYS = 396
 
 const usage = () => {
   console.error(`usage: node scripts/sync-posthog-project-settings.mjs [--app-url <url> ...] [--dry-run | --check]
@@ -66,17 +66,14 @@ const envUrls = (process.env.POSTHOG_APP_URLS || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean)
-const retentionMonths = Number.parseInt(
-  process.env.POSTHOG_EVENT_RETENTION_MONTHS || String(DEFAULT_EVENT_RETENTION_MONTHS),
-  10,
-)
+const retentionMonths = Number(process.env.POSTHOG_EVENT_RETENTION_MONTHS || String(DEFAULT_EVENT_RETENTION_MONTHS))
 
 if (!apiKey || !projectId) {
   usage()
   process.exit(2)
 }
-if (!Number.isInteger(retentionMonths) || retentionMonths < 1 || retentionMonths > 120) {
-  throw new Error("POSTHOG_EVENT_RETENTION_MONTHS must be an integer from 1 through 120.")
+if (!Number.isInteger(retentionMonths) || retentionMonths < 1 || retentionMonths > DEFAULT_EVENT_RETENTION_MONTHS) {
+  throw new Error("POSTHOG_EVENT_RETENTION_MONTHS must be an integer from 1 through 13.")
 }
 
 const normalizeUrl = (value) => {
@@ -128,65 +125,39 @@ const patch = {
   cookieless_server_hash_mode: 1,
 }
 
-// Legacy fields are optional. The dedicated endpoint separately reports the
-// explicit cleanup policy and query window; saved policy does not prove a cleanup ran.
-const retentionBaseline = {
-  event_retention_months: retentionMonths,
-  events_retention_enforced: true,
-}
+const retentionBaseline = { maximumCleanupMonths: Math.min(retentionMonths, MAX_CLEANUP_MONTHS), maximumEventAgeDays: MAX_EVENT_AGE_DAYS }
 
-const auditRetention = async (settings) => {
-  const legacy = Object.hasOwn(settings, "event_retention_months")
-  let months = settings.event_retention_months
-  if (!legacy) {
-    try {
-      const retention = await request("GET", undefined,
-        `${host}/api/projects/${encodeURIComponent(projectId)}/events_retention/`)
-      months = retention.retention_months
-      // The supported custom-policy API now exposes a deletion policy separately
-      // from the legacy query window. Verify the explicit policy against our
-      // governance target, never substitute a plan default for an active control.
-      if (retention.project_retention_months != null) {
-        const configured = retention.project_retention_months
-        if (!Number.isInteger(configured) || configured < 1 || configured > retentionMonths ||
-            retention.min_retention_months != null && configured < retention.min_retention_months ||
-            retention.max_retention_months != null && configured > retention.max_retention_months) {
-          throw new Error("explicit project cleanup policy is invalid, outside the provider range or exceeds the governance target")
-        }
-        if (months != null && (!Number.isInteger(months) || months < 1 || months > ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX ||
-            typeof retention.retained_from !== "string" || !Number.isFinite(Date.parse(retention.retained_from)))) {
-          throw new Error("effective query window is invalid or exceeds the accepted ceiling")
-        }
-        if (months === null && retention.retained_from !== null) throw new Error("inconsistent effective query window")
-        console.log(`PostHog configured event deletion policy: ${configured} months (explicit project override)`)
-        console.log(`PostHog effective query window: ${months == null ? "unknown; no active window reported" : `${months} months`}`)
-        console.log("PostHog monthly cleanup execution: not independently verified; saved policy is not a completed deletion receipt")
-      }
-      if (months === null && retention.retained_from === null) {
-        throw new Error("no retention window applies; the accepted finite ceiling is unverified")
-      }
-      if (typeof retention.retained_from !== "string" || !Number.isFinite(Date.parse(retention.retained_from))) {
-        throw new Error("missing or invalid retained_from")
-      }
-    } catch (error) {
-      throw new Error(`PostHog retention could not be verified: ${error.message}`)
-    }
+const auditRetention = async () => {
+  const retention = await request("GET", undefined,
+    `${host}/api/projects/${encodeURIComponent(projectId)}/events_retention/`)
+  const configured = retention?.project_retention_months
+  const minimum = retention?.min_retention_months, maximum = retention?.max_retention_months
+  if (!Number.isInteger(configured) || configured < 1 || configured > retentionBaseline.maximumCleanupMonths ||
+      !Number.isInteger(minimum) || minimum < 1 || !Number.isInteger(maximum) || maximum < minimum ||
+      configured < minimum || configured > maximum) {
+    throw new Error("PostHog explicit project cleanup policy is missing, invalid or exceeds the approved bound (including monthly cleanup headroom).")
   }
-  if (!Number.isInteger(months) || months < 1) {
-    throw new Error("PostHog retention could not be verified: missing, invalid or unbounded event window")
+  console.log(`PostHog configured cleanup policy: ${configured} months`)
+  console.log(`PostHog query window: ${Number.isInteger(retention.retention_months) ? `${retention.retention_months} months` : "unknown; not required for this control"}`)
+
+  // POST executes a SELECT aggregate only; it neither captures nor deletes data.
+  const result = await request("POST", {
+    query: { kind: "HogQLQuery", query: `SELECT count() AS over_age_events FROM events WHERE timestamp < now() - INTERVAL ${MAX_EVENT_AGE_DAYS} DAY` },
+    refresh: "force_blocking",
+    name: "Siteinabox retention assurance: over-age event count",
+  }, `${host}/api/projects/${encodeURIComponent(projectId)}/query/`)
+  if (!result || result.error || result.query_status?.error ||
+      result.query_status != null && result.query_status.complete !== true ||
+      result.is_cached != null && result.is_cached !== false ||
+      !Array.isArray(result.results) || result.results.length !== 1 ||
+      !Array.isArray(result.results[0]) || result.results[0].length !== 1 ||
+      !Number.isSafeInteger(result.results[0][0]) || result.results[0][0] < 0) {
+    throw new Error("PostHog age check is incomplete, cached or malformed.")
   }
-  if (months > ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX) {
-    throw new Error(`PostHog privacy drift: event query window ${months} months exceeds the SIAB-002 accepted ceiling of ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months`)
-  }
-  console.log(`PostHog event query window: ${months} months (${legacy ? "legacy project fields" : "events_retention endpoint"})`)
-  if (!legacy || typeof settings.events_retention_enforced !== "boolean") {
-    console.log("PostHog deletion enforcement: unknown; the query-window readback does not establish deletion")
-  } else {
-    console.log(`PostHog legacy retention enforcement reported: ${settings.events_retention_enforced}; this is not deletion proof`)
-  }
-  if (!legacy || months !== retentionMonths || settings.events_retention_enforced !== true) {
-    console.log(`SIAB-002 accepted provider constraint: window within ${ACCEPTED_PROVIDER_RETENTION_MONTHS_MAX} months; the ${retentionMonths}-month enforced governance target is not established`)
-  }
+  const count = result.results[0][0]
+  if (count !== 0) throw new Error(`PostHog retention drift: ${count} queryable events exceed ${MAX_EVENT_AGE_DAYS} days.`)
+  console.log(`PostHog queryable events older than ${MAX_EVENT_AGE_DAYS} days: 0 (fresh aggregate)`)
+  console.log("PostHog physical deletion: not independently verified; provider-managed cleanup is relied upon.")
 }
 
 if (checkOnly) {
@@ -203,8 +174,8 @@ if (checkOnly) {
     }
     process.exit(1)
   }
-  await auditRetention(current)
-  console.log(`PostHog mutable privacy baseline and accepted provider window verified for project ${projectId}`)
+  await auditRetention()
+  console.log(`PostHog mutable privacy baseline, explicit cleanup policy and observable event age verified for project ${projectId}`)
 } else if (dryRun) {
   console.log(JSON.stringify({ endpoint, patch, readOnlyAudit: retentionBaseline }, null, 2))
 } else {
@@ -221,5 +192,5 @@ if (checkOnly) {
   console.log(`  Cookieless hashing: ${updated.cookieless_server_hash_mode === 1 ? "stateless" : "unknown"}`)
   console.log(`  App URLs: ${appUrls.length}`)
   for (const url of appUrls) console.log(`    ${url}`)
-  await auditRetention(updated)
+  await auditRetention()
 }
