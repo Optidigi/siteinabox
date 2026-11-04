@@ -16,7 +16,7 @@ changes.
 | Appointment calendar OAuth state | 10 minutes | Daily CMS purge of expired correlation records; state is single-use and marked consumed |
 | Backups | Approved product target: encrypted off-host rolling 30 days | Actual infrastructure retention and restore/deletion proof require separate verification; target is not an enforcement claim |
 | Security/access logs | Normally 6-12 months | Logging platform retention |
-| PostHog identifiable/pseudonymous analytics | At most 13 months | PostHog project retention verification |
+| PostHog identifiable/pseudonymous analytics | At most 396 days | Explicit provider cleanup policy ≤11 months and fresh daily zero count of over-age queryable events; independent physical-deletion proof is not required |
 | Google Analytics 4 landing analytics | At most 13 months; prefer the available 2-month setting | GA4 property retention verification |
 | Fiscal administration | 7 years or applicable statutory period | Finance system retention |
 | Marketing permission evidence | Through use plus required evidence period | Preference event retention |
