@@ -102,3 +102,17 @@ test("sync payload never tries to write provider-managed retention fields", () =
   assert.equal(Object.hasOwn(patch.body, "events_retention_enforced"), false)
   assert.equal(patch.body.anonymize_ips, true)
 })
+
+test("explicit project cleanup policy is verified independently of the legacy query window", () => {
+ const result=run({retention:{project_retention_months:12,min_retention_months:1,max_retention_months:12,retention_months:null,retained_from:null}})
+ assert.notEqual(result.status,0)
+ assert.match(result.stderr,/finite ceiling is unverified/)
+ assert.match(result.stdout,/configured.*deletion.*12 months/i)
+ assert.match(result.stdout,/query window.*unknown/i)
+ assert.match(result.stdout,/cleanup.*not.*verified/i)
+ assert(result.calls.every(call=>call.method==="GET"))
+ assert.equal(run({retention:{project_retention_months:12,min_retention_months:1,max_retention_months:12,retention_months:12,retained_from:"2025-10-23"}}).status,0)
+ for(const months of [0,"12",14,84])assert.notEqual(run({retention:{project_retention_months:months,retention_months:12,retained_from:"2025-10-23"}}).status,0)
+ assert.notEqual(run({retention:{project_retention_months:13,min_retention_months:1,max_retention_months:12,retention_months:null,retained_from:null}}).status,0)
+ assert.notEqual(run({retention:{project_retention_months:12,retention_months:85,retained_from:"2019-01-01"}}).status,0)
+})
