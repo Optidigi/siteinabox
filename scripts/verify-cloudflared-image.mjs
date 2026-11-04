@@ -1,12 +1,45 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { spawnSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import path from "node:path"
-import { setTimeout } from "node:timers/promises"
+import { setTimeout as delay } from "node:timers/promises"
 import { verifyTunnelOffline } from "./verify-tunnel-offline.mjs"
 import { collectImageDependencies } from "./collect-image-dependencies.mjs"
 import { requiredImageAnalysisTypes } from "./dependency-image-evidence.mjs"
 import { sha256File } from "./image-artifact.mjs"
 import { infrastructure } from "./infrastructure-images.mjs"
+
+/** Read a snapshot incrementally; offline connection failures can flood logs. */
+export function readTunnelDiagnostics(name, { spawnImpl = spawn, timeoutMs = 10000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawnImpl("docker", ["logs", name], { stdio: ["ignore", "pipe", "pipe"] })
+    const marker = "Starting metrics server"
+    const windows = { stdout: "", stderr: "" }
+    let tail = "", metricsStarted = false, readerStopped = false, settled = false
+    const finish = error => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (error) { child.kill("SIGKILL"); reject(error) }
+      else resolve({ metricsStarted, tail })
+    }
+    const timer = setTimeout(() => finish(new Error("Owned tunnel diagnostics exceeded their deadline")), timeoutMs)
+    for (const stream of ["stdout", "stderr"]) child[stream].on("data", chunk => {
+      if (settled) return
+      const text = chunk.toString()
+      const combined = windows[stream] + text
+      windows[stream] = combined.slice(-(marker.length - 1))
+      tail = (tail + text).slice(-2048)
+      if (!metricsStarted && combined.includes(marker)) {
+        metricsStarted = true
+        readerStopped = child.kill("SIGTERM") // Stop only our reader, never the container.
+      }
+    })
+    child.once("error", error => finish(new Error("Could not read owned tunnel diagnostics: " + error.code)))
+    // Docker can report exit 1 when our signal cancels its HTTP log read.
+    child.once("close", code => finish(code === 0 || metricsStarted && readerStopped
+      ? null : new Error("Could not read owned tunnel diagnostics (exit " + code + "): " + tail)))
+  })
+}
 
 /** The CMS producer owns this small native artifact, just like PostgreSQL. */
 export async function verifyCloudflaredImage({ docker, image, sourceSHA, artifactDir, prefix, resourceId }) {
@@ -30,14 +63,13 @@ export async function verifyCloudflaredImage({ docker, image, sourceSHA, artifac
     let started = false
     for (let attempt = 0; attempt < 30; attempt++) {
       const state = JSON.parse(docker(["inspect", "--format", "{{json .State}}", name], true))
-      const logResult = spawnSync("docker", ["logs", name], { encoding: "utf8", timeout: 10000 })
-      if (logResult.error || logResult.status !== 0) throw new Error("Could not read owned tunnel diagnostics")
-      const logs = (logResult.stdout ?? "") + (logResult.stderr ?? "")
-      if (!state.Running) throw new Error("Offline tunnel exited before shutdown contract: " + logs.slice(-2000))
-      if (logs.includes("Starting metrics server")) { started = true; break }
-      await setTimeout(200)
+      const diagnostics = await readTunnelDiagnostics(name)
+      if (!state.Running) throw new Error("Offline tunnel exited before shutdown contract: " + diagnostics.tail)
+      if (diagnostics.metricsStarted) { started = true; break }
+      await delay(200)
     }
     if (!started) throw new Error("Offline tunnel did not start its metrics server")
+    if (docker(["inspect", "--format", "{{.State.Running}}", name], true).trim() !== "true") throw new Error("Offline tunnel stopped before SIGTERM verification")
     docker(["stop", "--timeout", "10", name])
     if (docker(["inspect", "--format", "{{.State.ExitCode}}", name], true).trim() !== "0") throw new Error("Tunnel failed graceful SIGTERM shutdown")
   } finally {
