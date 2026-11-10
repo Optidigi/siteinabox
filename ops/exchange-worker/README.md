@@ -90,8 +90,9 @@ An existing licensed mailbox requires review and is never converted.
 Exchange fixes the delegate list only when FullAccess is granted, an existing
 permission is removed and re-granted with `-AutoMapping $true` (and restored if
 the re-grant fails). `ensure_shared_access` applies the same FullAccess, SendAs
-and automapping contract to an existing shared mailbox; it never creates a
-mailbox and does not change forwarding.
+and automapping contract to an existing shared mailbox; members may be mailboxes
+in any accepted domain of the tenant, and it never creates a mailbox or changes
+forwarding.
 `get_dkim_targets` prepares a disabled DKIM configuration; `enable_dkim` requires
 both CNAMEs to resolve to Microsoft's targets before switching signing on.
 

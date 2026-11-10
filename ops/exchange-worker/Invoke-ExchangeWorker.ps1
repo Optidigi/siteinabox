@@ -127,7 +127,7 @@ function Invoke-ExchangeJob($Job) {
       if (-not $parsedMailbox -or $parsedMailbox.Address -cne $mailbox -or $parsedMailbox.Host -cne $domain) { throw 'invalid_shared_mailbox_members' }
       foreach ($member in $members) {
         $parsed = [System.Net.Mail.MailAddress]::new([string]$member)
-        if ($parsed.Host -cne $domain -or $parsed.Address -cne [string]$member -or [string]$member -ceq $mailbox) { throw 'invalid_shared_mailbox_members' }
+        if ($parsed.Address -cne [string]$member -or [string]$member -ceq $mailbox) { throw 'invalid_shared_mailbox_members' }
         if (-not (Get-EXOMailbox -Identity ([string]$member) -ErrorAction SilentlyContinue)) { throw 'shared_mailbox_member_missing' }
       }
       $existing = Get-EXOMailbox -Identity $mailbox -ErrorAction SilentlyContinue

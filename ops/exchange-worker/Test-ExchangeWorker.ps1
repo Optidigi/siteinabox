@@ -75,6 +75,10 @@ $sharedJob = $base.Clone(); $sharedJob.operation = 'ensure_shared_access'; $shar
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$sharedJob) } 'existing_shared_mailbox_requires_review'
 $script:mailboxKind = 'SharedMailbox'
 $sharedJob.mailboxAddresses = @('user@other.test')
+$script:fullAccess = $false; $script:sendAs = $false; $script:fullAccessRemoves = 0; $script:lastAutoMapping = $null
+$sharedResult = Invoke-ExchangeJob ([pscustomobject]$sharedJob)
+if ($sharedResult.sharedMailboxMembers[0] -ne 'user@other.test' -or $script:lastAutoMapping -ne $true -or -not $script:sendAs) { throw 'cross-domain shared mailbox member was not granted with automapping' }
+$sharedJob.mailboxAddresses = @('shared@customer.test')
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$sharedJob) } 'invalid_shared_mailbox_members'
 $sharedJob.mailboxAddresses = @('user@customer.test')
 $script:fullAccess = $false; $script:sendAs = $false; $script:fullAccessRemoves = 0; $script:lastAutoMapping = $null
