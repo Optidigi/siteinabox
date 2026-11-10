@@ -1319,6 +1319,586 @@
       "sources": [
         "scanner-release"
       ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2025-10911",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "2223259d190f5dfa73466cf74d1246dbae89248a283700b5d51690c13cf1d719",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2025-10911). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-107364",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-107364). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-107708",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be4dbf585dbf2f0520b8f8a7ffdf3c52332012e5c655f04c2fe987f6d87995b5",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-107708). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-107778",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "7f52f1fe702aecdda9d176f61c8cd4ebb7586c30190811d9cb0baa0c2dc06799",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-107778). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-107884",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be4dbf585dbf2f0520b8f8a7ffdf3c52332012e5c655f04c2fe987f6d87995b5",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-107884). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-111423",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be4dbf585dbf2f0520b8f8a7ffdf3c52332012e5c655f04c2fe987f6d87995b5",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-111423). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112314",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "be4dbf585dbf2f0520b8f8a7ffdf3c52332012e5c655f04c2fe987f6d87995b5",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112314). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112315",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112315). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112316",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112316). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112317",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112317). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112318",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112318). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112319",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112319). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112320",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112320). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112321",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112321). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112322",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112322). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-112323",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-112323). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-118380",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-118380). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-119079",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-119079). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-125350",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "unknown",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "aeebccc47432f349c995841ab8b5dad6f5d01d83762e110d0229ecb43ef3194a",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-125350). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-40355",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "e985b72ad13c038b75e0894a353cbcf770f4ed300f643c619be8fa1dc120e6d3",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-40355). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-40356",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "e985b72ad13c038b75e0894a353cbcf770f4ed300f643c619be8fa1dc120e6d3",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-40356). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-71199",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-71199). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-71200",
+      "package": "krb5-libs",
+      "version": "1.22.2-r1",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-71200). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-87636",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-87636). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:postgres",
+      "id": "CVE-2026-9947",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-9947). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2025-10911",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "2223259d190f5dfa73466cf74d1246dbae89248a283700b5d51690c13cf1d719",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2025-10911). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2026-12-10T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-125350",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "unknown",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "aeebccc47432f349c995841ab8b5dad6f5d01d83762e110d0229ecb43ef3194a",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-125350). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-87636",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-87636). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:site",
+      "id": "CVE-2026-9947",
+      "package": "libxslt",
+      "version": "1.1.43-r3",
+      "severity": "high",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-9947). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:56:07.397Z",
+      "deadline": "2027-02-08T19:56:07.397Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
+      "sources": [
+        "scanner-release"
+      ]
     }
   ],
   "limitations": [
