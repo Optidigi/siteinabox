@@ -1046,16 +1046,16 @@
       "id": "CVE-2026-78661",
       "package": "golang.org/x/net",
       "version": "v0.61.0",
-      "severity": "unknown",
+      "severity": "high",
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "factsHash": "85235b37ffff8d36a402a53d877b5729bb8725cde3ec88e6b796d2966a4808fb",
       "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod. Fresh 2026-11-10 scanner metadata reports high severity and a changed facts hash; the exact-binary symbol evidence above is unchanged, so the not_affected disposition is re-affirmed with the new binding.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T18:13:04.395Z",
-      "deadline": "2026-11-27T18:13:04.395Z",
+      "reviewedAt": "2026-11-10T18:46:19.746Z",
+      "deadline": "2027-02-08T18:46:19.746Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
@@ -1070,7 +1070,7 @@
           "scope": "image:cloudflared",
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
-          "advisoryHash": "f14a663a3e7b4cad00ba64dd006d6ddaebf882f21f47cdb4d85762ea135144ef"
+          "advisoryHash": "0e4f2a9c60e0c35b7ede5fd0a7e6858678b94689bb22415c7f9c420b4499b578"
         }
       }
     },
@@ -1079,16 +1079,16 @@
       "id": "CVE-2026-97045",
       "package": "golang.org/x/net",
       "version": "v0.61.0",
-      "severity": "unknown",
+      "severity": "moderate",
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "factsHash": "c5f3c982c86b0430efad2ed5f90c7f0bc39df4ed97b65de14f61dbb8f7e6d012",
       "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod. Fresh 2026-11-10 scanner metadata reports moderate severity and a changed facts hash; the exact-binary symbol evidence above is unchanged, so the not_affected disposition is re-affirmed with the new binding.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T18:13:04.395Z",
-      "deadline": "2026-11-27T18:13:04.395Z",
+      "reviewedAt": "2026-11-10T18:46:19.746Z",
+      "deadline": "2027-02-08T18:46:19.746Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
@@ -1103,7 +1103,7 @@
           "scope": "image:cloudflared",
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
-          "advisoryHash": "aa43ec377f719609f09ea1bdeeae43b9a76a08e8f7276fedc7514f6e049e597c"
+          "advisoryHash": "1315f77fb2aac2cf9290b6b3c52ccd935c4e0a4a65c8f0c0ec485161403e4ec3"
         }
       }
     },
