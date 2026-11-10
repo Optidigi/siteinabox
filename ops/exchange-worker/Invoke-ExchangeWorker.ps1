@@ -24,13 +24,37 @@ function Invoke-ExchangeJob($Job) {
   if ($partnerUpn -notmatch '^[^\s@]+@[^\s@]+\.[^\s@]+$') { throw 'invalid_partner_identity' }
   Connect-ExchangeOnline -AccessToken ([string]$Job.accessToken) -UserPrincipalName $partnerUpn -DelegatedOrganization $organizationDomain -ShowBanner:$false -ShowProgress:$false
   try {
+    function Set-SharedMailboxMemberAccess([string]$MailboxAddress, [string]$MemberAddress) {
+      $access = Get-MailboxPermission -Identity $MailboxAddress -User $MemberAddress -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains 'FullAccess' -and -not $_.Deny }
+      if ($access) {
+        # AutoMapping can only be set together with the permission. Re-grant an
+        # existing FullAccess permission so one created without automapping is
+        # repaired instead of silently leaving the mailbox unmapped.
+        Remove-MailboxPermission -Identity $MailboxAddress -User $MemberAddress -AccessRights FullAccess -InheritanceType All -Confirm:$false
+      }
+      try {
+        Add-MailboxPermission -Identity $MailboxAddress -User $MemberAddress -AccessRights FullAccess -InheritanceType All -AutoMapping $true -Confirm:$false | Out-Null
+      }
+      catch {
+        # A failed re-grant must not leave the delegate without access.
+        Add-MailboxPermission -Identity $MailboxAddress -User $MemberAddress -AccessRights FullAccess -InheritanceType All -AutoMapping $true -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+        throw
+      }
+      $sendAs = Get-RecipientPermission -Identity $MailboxAddress -Trustee $MemberAddress -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains 'SendAs' -and $_.AccessControlType -eq 'Allow' }
+      if (-not $sendAs) { Add-RecipientPermission -Identity $MailboxAddress -Trustee $MemberAddress -AccessRights SendAs -Confirm:$false | Out-Null }
+      $access = Get-MailboxPermission -Identity $MailboxAddress -User $MemberAddress -ErrorAction Stop | Where-Object { $_.AccessRights -contains 'FullAccess' -and -not $_.Deny }
+      $sendAs = Get-RecipientPermission -Identity $MailboxAddress -Trustee $MemberAddress -ErrorAction Stop | Where-Object { $_.AccessRights -contains 'SendAs' -and $_.AccessControlType -eq 'Allow' }
+      if (-not $access -or -not $sendAs) { throw 'shared_mailbox_permissions_unverified' }
+    }
+
     if ($Job.operation -eq 'verify_access') {
       Get-OrganizationConfig -ErrorAction Stop | Out-Null
       $commands = @{
         get_dkim_targets = @('Get-DkimSigningConfig', 'New-DkimSigningConfig')
         enable_dkim = @('Get-DkimSigningConfig', 'Set-DkimSigningConfig')
         ensure_info_alias = @('Get-EXOMailbox', 'Get-EXORecipient', 'Set-Mailbox')
-        ensure_info_shared = @('Get-EXOMailbox', 'New-Mailbox', 'Set-Mailbox', 'Get-MailboxPermission', 'Add-MailboxPermission', 'Get-RecipientPermission', 'Add-RecipientPermission')
+        ensure_info_shared = @('Get-EXOMailbox', 'New-Mailbox', 'Set-Mailbox', 'Get-MailboxPermission', 'Remove-MailboxPermission', 'Add-MailboxPermission', 'Get-RecipientPermission', 'Add-RecipientPermission')
+        ensure_shared_access = @('Get-EXOMailbox', 'Get-MailboxPermission', 'Remove-MailboxPermission', 'Add-MailboxPermission', 'Get-RecipientPermission', 'Add-RecipientPermission')
         ensure_info_forward = @('Get-EXOMailbox', 'New-Mailbox', 'Set-Mailbox', 'Get-HostedOutboundSpamFilterPolicy', 'New-HostedOutboundSpamFilterPolicy', 'Set-HostedOutboundSpamFilterPolicy', 'Get-HostedOutboundSpamFilterRule', 'New-HostedOutboundSpamFilterRule', 'Set-HostedOutboundSpamFilterRule')
       }
       if (-not $Job.PSObject.Properties['requiredOperations'] -or @($Job.requiredOperations).Count -lt 2 -or @($Job.requiredOperations).Count -gt 3) { throw 'invalid_capability_request' }
@@ -90,15 +114,26 @@ function Invoke-ExchangeJob($Job) {
       if (-not $existing) { New-Mailbox -Shared -Name $mailbox -DisplayName "Info ($domain)" -PrimarySmtpAddress $mailbox | Out-Null }
       elseif ([string]$existing.RecipientTypeDetails -ne 'SharedMailbox') { throw 'existing_info_mailbox_requires_review' }
       Set-Mailbox -Identity $mailbox -ForwardingAddress $null -ForwardingSmtpAddress $null -DeliverToMailboxAndForward $false -MessageCopyForSentAsEnabled $true
+      foreach ($member in $members) { Set-SharedMailboxMemberAccess $mailbox $member }
+      return @{ operation = $Job.operation; completed = $true; sharedMailbox = $mailbox; sharedMailboxMembers = $members }
+    }
+
+    if ($Job.operation -eq 'ensure_shared_access') {
+      $mailbox = ([string]$Job.sharedMailboxAddress).Trim().ToLowerInvariant()
+      $members = @($Job.mailboxAddresses)
+      if ($members.Count -lt 1 -or $members.Count -gt 300) { throw 'invalid_shared_mailbox_members' }
+      $parsedMailbox = $null
+      try { $parsedMailbox = [System.Net.Mail.MailAddress]::new($mailbox) } catch { }
+      if (-not $parsedMailbox -or $parsedMailbox.Address -cne $mailbox -or $parsedMailbox.Host -cne $domain) { throw 'invalid_shared_mailbox_members' }
       foreach ($member in $members) {
-        $access = Get-MailboxPermission -Identity $mailbox -User $member -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains 'FullAccess' -and -not $_.Deny }
-        if (-not $access) { Add-MailboxPermission -Identity $mailbox -User $member -AccessRights FullAccess -InheritanceType All -AutoMapping $true -Confirm:$false | Out-Null }
-        $sendAs = Get-RecipientPermission -Identity $mailbox -Trustee $member -ErrorAction SilentlyContinue | Where-Object { $_.AccessRights -contains 'SendAs' -and $_.AccessControlType -eq 'Allow' }
-        if (-not $sendAs) { Add-RecipientPermission -Identity $mailbox -Trustee $member -AccessRights SendAs -Confirm:$false | Out-Null }
-        $access = Get-MailboxPermission -Identity $mailbox -User $member -ErrorAction Stop | Where-Object { $_.AccessRights -contains 'FullAccess' -and -not $_.Deny }
-        $sendAs = Get-RecipientPermission -Identity $mailbox -Trustee $member -ErrorAction Stop | Where-Object { $_.AccessRights -contains 'SendAs' -and $_.AccessControlType -eq 'Allow' }
-        if (-not $access -or -not $sendAs) { throw 'shared_mailbox_permissions_unverified' }
+        $parsed = [System.Net.Mail.MailAddress]::new([string]$member)
+        if ($parsed.Host -cne $domain -or $parsed.Address -cne [string]$member -or [string]$member -ceq $mailbox) { throw 'invalid_shared_mailbox_members' }
+        if (-not (Get-EXOMailbox -Identity ([string]$member) -ErrorAction SilentlyContinue)) { throw 'shared_mailbox_member_missing' }
       }
+      $existing = Get-EXOMailbox -Identity $mailbox -ErrorAction SilentlyContinue
+      if (-not $existing) { throw 'shared_mailbox_missing' }
+      if ([string]$existing.RecipientTypeDetails -ne 'SharedMailbox') { throw 'existing_shared_mailbox_requires_review' }
+      foreach ($member in $members) { Set-SharedMailboxMemberAccess $mailbox $member }
       return @{ operation = $Job.operation; completed = $true; sharedMailbox = $mailbox; sharedMailboxMembers = $members }
     }
 

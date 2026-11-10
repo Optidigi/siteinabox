@@ -47,7 +47,7 @@ frontends returned 404 during image qualification despite CDN availability.
 The offline installer test proves that incorrect bytes are rejected before
 extraction or manifest use. Changing module bytes requires a reviewed catalog update. The native PowerShell contract test loads the actual worker job
 function and substitutes Exchange commands; it checks delegated identity,
-read access, licensed-mailbox protection, alias conflicts and DKIM DNS gating.
+read access, licensed-mailbox protection, alias conflicts, shared-mailbox automapping repair and DKIM DNS gating.
 It never connects to Microsoft. Run an authenticated `/health` smoke on the
 actual candidate container as well; it must report protocolVersion2, installed
 Exchange module and `dig`. Scan/review OS and PowerShell/module dependencies
@@ -86,6 +86,12 @@ that the requested addresses exist in Exchange before MX cutover.
 `ensure_info_forward` creates an unlicensed shared mailbox when absent, preserves
 a configured external destination and enables forwarding only for that mailbox.
 An existing licensed mailbox requires review and is never converted.
+`ensure_info_shared` and `ensure_shared_access` also repair automapping: because
+Exchange fixes the delegate list only when FullAccess is granted, an existing
+permission is removed and re-granted with `-AutoMapping $true` (and restored if
+the re-grant fails). `ensure_shared_access` applies the same FullAccess, SendAs
+and automapping contract to an existing shared mailbox; it never creates a
+mailbox and does not change forwarding.
 `get_dkim_targets` prepares a disabled DKIM configuration; `enable_dkim` requires
 both CNAMEs to resolve to Microsoft's targets before switching signing on.
 

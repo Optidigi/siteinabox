@@ -50,13 +50,34 @@ Write-Host 'PASS: delegated identity, access read, existing mailbox protection, 
 $job = $base.Clone(); $job.operation = 'ensure_info_shared'; $job.infoAddress = 'info@customer.test'; $job.mailboxAddresses = @('user@customer.test')
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'existing_info_mailbox_requires_review'
 $script:mailboxKind = 'SharedMailbox'
-$script:fullAccess = $false; $script:sendAs = $false
+$script:fullAccess = $false; $script:sendAs = $false; $script:fullAccessRemoves = 0; $script:lastAutoMapping = $null
 function Get-MailboxPermission { param($Identity,$User,$ErrorAction) if ($script:fullAccess) { return @{ AccessRights = @('FullAccess'); Deny = $false } } }
-function Add-MailboxPermission { param($Identity,$User,$AccessRights,$InheritanceType,$AutoMapping,$Confirm) $script:fullAccess = $true }
+function Add-MailboxPermission { param($Identity,$User,$AccessRights,$InheritanceType,$AutoMapping,$Confirm) $script:fullAccess = $true; $script:lastAutoMapping = $AutoMapping }
+function Remove-MailboxPermission { param($Identity,$User,$AccessRights,$InheritanceType,$Confirm) $script:fullAccess = $false; $script:fullAccessRemoves++ }
 function Get-RecipientPermission { param($Identity,$Trustee,$ErrorAction) if ($script:sendAs) { return @{ AccessRights = @('SendAs'); AccessControlType = 'Allow' } } }
 function Add-RecipientPermission { param($Identity,$Trustee,$AccessRights,$Confirm) $script:sendAs = $true }
 $result = Invoke-ExchangeJob ([pscustomobject]$job)
 if ($result.sharedMailbox -ne 'info@customer.test' -or $result.sharedMailboxMembers[0] -ne 'user@customer.test' -or -not $script:fullAccess -or -not $script:sendAs) { throw 'Shared mailbox permissions missing' }
+if ($script:lastAutoMapping -ne $true -or $script:fullAccessRemoves -ne 0) { throw 'New shared mailbox permission must be granted with automapping' }
+
+# Re-running over a FullAccess permission that was created without automapping must re-grant it.
+$script:fullAccess = $true; $script:fullAccessRemoves = 0; $script:lastAutoMapping = $null
+$result = Invoke-ExchangeJob ([pscustomobject]$job)
+if ($script:fullAccessRemoves -ne 1 -or $script:lastAutoMapping -ne $true -or -not $script:fullAccess) { throw 'Existing shared mailbox permission must be re-granted with automapping' }
+
 $job.mailboxAddresses = @('user@other.test')
 Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$job) } 'invalid_shared_mailbox_members'
-Write-Host 'PASS: shared inbox requires same-domain users and verifies FullAccess + SendAs'
+Write-Host 'PASS: shared inbox requires same-domain users, verifies FullAccess + SendAs, repairs automapping'
+
+# ensure_shared_access: existing shared mailbox only, same-domain members, automapping + SendAs.
+$script:mailboxKind = 'UserMailbox'
+$sharedJob = $base.Clone(); $sharedJob.operation = 'ensure_shared_access'; $sharedJob.sharedMailboxAddress = 'shared@customer.test'; $sharedJob.mailboxAddresses = @('user@customer.test')
+Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$sharedJob) } 'existing_shared_mailbox_requires_review'
+$script:mailboxKind = 'SharedMailbox'
+$sharedJob.mailboxAddresses = @('user@other.test')
+Assert-ThrowsCode { Invoke-ExchangeJob ([pscustomobject]$sharedJob) } 'invalid_shared_mailbox_members'
+$sharedJob.mailboxAddresses = @('user@customer.test')
+$script:fullAccess = $false; $script:sendAs = $false; $script:fullAccessRemoves = 0; $script:lastAutoMapping = $null
+$sharedResult = Invoke-ExchangeJob ([pscustomobject]$sharedJob)
+if ($sharedResult.sharedMailbox -ne 'shared@customer.test' -or $sharedResult.sharedMailboxMembers[0] -ne 'user@customer.test' -or $script:lastAutoMapping -ne $true -or -not $script:sendAs) { throw 'ensure_shared_access did not grant automapped FullAccess + SendAs' }
+Write-Host 'PASS: ensure_shared_access is limited to existing shared mailboxes and re-grants automapping'
