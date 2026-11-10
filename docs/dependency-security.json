@@ -568,8 +568,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports login 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -588,8 +588,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports passwd 1:4.13+dfsg1-4ubuntu3.2 with CVE-2024-56433. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -608,8 +608,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libicu74 74.2-1ubuntu3.1 with CVE-2025-5222. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -628,8 +628,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102473. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -648,8 +648,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports dash 0.5.12-6ubuntu5 with CVE-2026-102474. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -668,8 +668,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libsasl2-2 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -688,48 +688,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libsasl2-modules-db 2.1.28+dfsg1-5ubuntu3.1 with CVE-2026-107161. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-18374",
-      "package": "libc-bin",
-      "version": "2.39-0ubuntu8.9",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim. Fresh 2026-11-04 metadata retains moderate severity, the same installed version and no fixed Ubuntu version; existing deadline and under-investigation status are unchanged.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-18374",
-      "package": "libc6",
-      "version": "2.39-0ubuntu8.9",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "d574670827185c763526e0b13c27ae81ee74cb3bebc25bede9c73388a17583e9",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-18374. Retained for owned remediation; no absence-of-exploitability claim. Fresh 2026-11-04 metadata retains moderate severity, the same installed version and no fixed Ubuntu version; existing deadline and under-investigation status are unchanged.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -748,8 +708,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18477. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -768,8 +728,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports tar 1.35+dfsg-3ubuntu0.4 with CVE-2026-18508. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -788,8 +748,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports liblmdb0 0.9.31-1build1 with CVE-2026-22185. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -808,8 +768,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libsystemd0 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -828,8 +788,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libudev1 255.4-1ubuntu8.18 with CVE-2026-40228. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2027-01-26T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -848,8 +808,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-67693. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -868,8 +828,8 @@
       "state": "not_affected",
       "reason": "The primary Microsoft advisory is Windows-only; the retained image is Linux/amd64. All duplicate managed assembly paths remain inventoried. Fresh 2026-11-04 complete image/native readback revalidates Linux scope after BIND/PCRE OS updates; the managed runtime and existing deadline are unchanged. PR159 protocol2 image verification revalidates the same managed files and assembly resolution; only the reviewed worker entrypoint differs from PR158. This binding covers the actual protocol2 native inventory, with the same deadline. The 875cf9b0 image refresh updates only apt/libapt-pkg OS packages (2.8.3 to 2.8.4ubuntu0.1); complete managed inventory and assembly resolution are unchanged. Revalidated against the exact new native/dpkg fingerprint with the existing deadline.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-04T20:34:19.399Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
@@ -883,7 +843,7 @@
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "377bb0ba703f2bc721a1b9789a748d22afebee120761b396816ae3fe5f1f3b57",
+          "fingerprint": "efdbc999cdd79230b37e718669cdd67fb3f307af071d9cef69b66a3d37ebacc0",
           "advisoryHash": "6500b316d2468e37a1cd89762046b9d21f7e20aa278e48d9d463a3cfbf0c91ca"
         }
       }
@@ -901,8 +861,8 @@
       "state": "not_affected",
       "reason": "Fresh 2026-11-04 exact-image verifier and retained runtime inventory confirm module import plus explicit LoadFrom of private Pkcs 10.0.0 resolve only in Default to host Pkcs 10.0.14 (SHA256 1f90b3863c17268abc78185b09f4ed66d51eac5d191cdf87815cb34d9aa89960), above the unchanged primary fix 10.0.13. PowerShell/module runtime inventory is byte-for-byte equivalent to the previous qualified proof. Native fingerprint is re-bound to updated BIND/PCRE OS packages and dpkg inventory. Re-reviewed for seven days; no DLL replacement, omission or high-severity waiver. PR159 protocol2 image verification revalidates the same managed files and assembly resolution; only the reviewed worker entrypoint differs from PR158. This binding covers the actual protocol2 native inventory, with the same deadline. The 875cf9b0 image refresh updates only apt/libapt-pkg OS packages (2.8.3 to 2.8.4ubuntu0.1); complete managed inventory and assembly resolution are unchanged. Revalidated against the exact new native/dpkg fingerprint with the existing deadline.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-04T20:34:19.402Z",
-      "deadline": "2026-11-11T16:58:10.998Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2027-02-08T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release",
@@ -916,7 +876,7 @@
         "binding": {
           "scope": "image:exchange-worker",
           "platform": "linux/amd64",
-          "fingerprint": "377bb0ba703f2bc721a1b9789a748d22afebee120761b396816ae3fe5f1f3b57",
+          "fingerprint": "efdbc999cdd79230b37e718669cdd67fb3f307af071d9cef69b66a3d37ebacc0",
           "advisoryHash": "93209c72520132e850cd2705e701e85c354da1c74221d72ef09c58fdb52a6706"
         }
       }
@@ -934,8 +894,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88647. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -954,48 +914,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-88648. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89092",
-      "package": "libc-bin",
-      "version": "2.39-0ubuntu8.9",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc-bin 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/136",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:exchange-worker",
-      "id": "CVE-2026-89092",
-      "package": "libc6",
-      "version": "2.39-0ubuntu8.9",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "0fe885899a391926b246c9ff56271120d4a251ae9b0d9a6995136543fce3295f",
-      "state": "under_investigation",
-      "reason": "Current exact-image inventory reports libc6 2.39-0ubuntu8.9 with CVE-2026-89092. Retained for owned remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1014,8 +934,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95184. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1034,8 +954,8 @@
       "state": "under_investigation",
       "reason": "Current exact-image inventory reports libgnutls30t64 3.8.3-1.1ubuntu3.6 with CVE-2026-95210. Retained for owned remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T17:25:26.846Z",
-      "deadline": "2026-11-27T17:25:26.846Z",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/136",
       "sources": [
         "scanner-release"
@@ -1046,16 +966,16 @@
       "id": "CVE-2026-78661",
       "package": "golang.org/x/net",
       "version": "v0.61.0",
-      "severity": "unknown",
+      "severity": "high",
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "factsHash": "85235b37ffff8d36a402a53d877b5729bb8725cde3ec88e6b796d2966a4808fb",
       "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod. Fresh 2026-11-10 scanner metadata reports high severity and a changed facts hash; the exact-binary symbol evidence above is unchanged, so the not_affected disposition is re-affirmed with the new binding.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T18:13:04.395Z",
-      "deadline": "2026-11-27T18:13:04.395Z",
+      "reviewedAt": "2026-11-10T18:46:19.746Z",
+      "deadline": "2027-02-08T18:46:19.746Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
@@ -1070,7 +990,7 @@
           "scope": "image:cloudflared",
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
-          "advisoryHash": "f14a663a3e7b4cad00ba64dd006d6ddaebf882f21f47cdb4d85762ea135144ef"
+          "advisoryHash": "0e4f2a9c60e0c35b7ede5fd0a7e6858678b94689bb22415c7f9c420b4499b578"
         }
       }
     },
@@ -1079,16 +999,16 @@
       "id": "CVE-2026-97045",
       "package": "golang.org/x/net",
       "version": "v0.61.0",
-      "severity": "unknown",
+      "severity": "moderate",
       "paths": [
         "usr/local/bin/cloudflared"
       ],
-      "factsHash": "8a91dcc90c132001b60bc5483a1e27573a983f74d1c3d82eb03198b862b990cd",
+      "factsHash": "c5f3c982c86b0430efad2ed5f90c7f0bc39df4ed97b65de14f61dbb8f7e6d012",
       "state": "not_affected",
-      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod.",
+      "reason": "Govulncheck 1.9.0 symbol analysis of exact owned executable b539060ab8a7c61534ece4a6169ac8dd496ca1d3c17fa6b84becc3bb47e75c4e retains this finding only at module level. Extraction enumerates 34,611 symbols with neither OpenPGP nor x/net/html packages. The vulnerable packages are absent from these executable bytes; this is not inferred from go.mod. Fresh 2026-11-10 scanner metadata reports moderate severity and a changed facts hash; the exact-binary symbol evidence above is unchanged, so the not_affected disposition is re-affirmed with the new binding.",
       "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-10-28T18:13:04.395Z",
-      "deadline": "2026-11-27T18:13:04.395Z",
+      "reviewedAt": "2026-11-10T18:46:19.746Z",
+      "deadline": "2027-02-08T18:46:19.746Z",
       "issue": "https://github.com/Optidigi/siteinabox/issues/135",
       "sources": [
         "scanner-release",
@@ -1103,7 +1023,7 @@
           "scope": "image:cloudflared",
           "platform": "linux/amd64",
           "fingerprint": "ce8473bd60be8057421b3d49dd0857083b4b5e54d7b8f707d4f4a05be6afdd7a",
-          "advisoryHash": "aa43ec377f719609f09ea1bdeeae43b9a76a08e8f7276fedc7514f6e049e597c"
+          "advisoryHash": "1315f77fb2aac2cf9290b6b3c52ccd935c4e0a4a65c8f0c0ec485161403e4ec3"
         }
       }
     },
@@ -1139,6 +1059,266 @@
           "advisoryHash": "b57fd1a2665aacb818444ae27ffbbf486d0c0940165f16113fb9b00c14f0cdc9"
         }
       }
+    },
+    {
+      "scope": "image:cms",
+      "id": "CVE-2026-4738",
+      "package": "zlib",
+      "version": "1.3.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "01c5dfad77fbf9188bfe64157d0b7584130f358a7703e5dfe79fb889c4ec92b7",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in Alpine zlib 1.3.2-r1. Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:03:39.100Z",
+      "deadline": "2026-12-10T19:03:39.100Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/167",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-107778",
+      "package": "libgssapi-krb5-2",
+      "version": "1.20.1-6ubuntu2.10",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "40af9591d8df321f209292530328ae72745b44fbeaca34be0b885cc58b780fe9",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libgssapi-krb5-2 1.20.1-6ubuntu2.10 (CVE-2026-107778). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-107778",
+      "package": "libk5crypto3",
+      "version": "1.20.1-6ubuntu2.10",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "40af9591d8df321f209292530328ae72745b44fbeaca34be0b885cc58b780fe9",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libk5crypto3 1.20.1-6ubuntu2.10 (CVE-2026-107778). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-107778",
+      "package": "libkrb5-3",
+      "version": "1.20.1-6ubuntu2.10",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "40af9591d8df321f209292530328ae72745b44fbeaca34be0b885cc58b780fe9",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libkrb5-3 1.20.1-6ubuntu2.10 (CVE-2026-107778). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-107778",
+      "package": "libkrb5support0",
+      "version": "1.20.1-6ubuntu2.10",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "40af9591d8df321f209292530328ae72745b44fbeaca34be0b885cc58b780fe9",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libkrb5support0 1.20.1-6ubuntu2.10 (CVE-2026-107778). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "bsdutils",
+      "version": "1:2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in bsdutils 1:2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "libblkid1",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libblkid1 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "libmount1",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libmount1 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "libsmartcols1",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libsmartcols1 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "libuuid1",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in libuuid1 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "mount",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in mount 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:exchange-worker",
+      "id": "CVE-2026-76642",
+      "package": "util-linux",
+      "version": "2.39.3-9ubuntu6.6",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "f9d942099e62f64404f6e4b2466320784da08a468decf2efe8d35b0261f8562d",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in util-linux 2.39.3-9ubuntu6.6 (CVE-2026-76642). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:15:50.358Z",
+      "deadline": "2026-12-10T19:15:50.358Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/168",
+      "sources": [
+        "scanner-release"
+      ]
+    },
+    {
+      "scope": "image:renderer",
+      "id": "CVE-2026-4738",
+      "package": "zlib",
+      "version": "1.3.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "01c5dfad77fbf9188bfe64157d0b7584130f358a7703e5dfe79fb889c4ec92b7",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in Alpine zlib 1.3.2-r1. Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:27:55.090Z",
+      "deadline": "2026-12-10T19:27:55.090Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/167",
+      "sources": [
+        "scanner-release"
+      ]
     }
   ],
   "limitations": [
