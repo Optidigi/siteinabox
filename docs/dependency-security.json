@@ -1139,6 +1139,26 @@
           "advisoryHash": "b57fd1a2665aacb818444ae27ffbbf486d0c0940165f16113fb9b00c14f0cdc9"
         }
       }
+    },
+    {
+      "scope": "image:cms",
+      "id": "CVE-2026-4738",
+      "package": "zlib",
+      "version": "1.3.2-r1",
+      "severity": "moderate",
+      "paths": [
+        "os-packages"
+      ],
+      "factsHash": "01c5dfad77fbf9188bfe64157d0b7584130f358a7703e5dfe79fb889c4ec92b7",
+      "state": "under_investigation",
+      "reason": "New 2026-11-10 exact-image scanner finding in Alpine zlib 1.3.2-r1. Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-10T19:03:39.100Z",
+      "deadline": "2026-12-10T19:03:39.100Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/167",
+      "sources": [
+        "scanner-release"
+      ]
     }
   ],
   "limitations": [
