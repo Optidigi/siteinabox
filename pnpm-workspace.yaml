@@ -31,3 +31,12 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+
+# @astrojs/astro2tsx ships a wasm build compiled against @emnapi/core 1.11.3 but leaves the
+# @emnapi/runtime peer of @napi-rs/wasm-runtime open. Rolldown's optional wasm binding pulls in
+# @emnapi/runtime 2.0.0-beta, which pnpm then picks for that peer, and the mixed runtimes break
+# `astro check` ("this.bridge.setLastError is not a function"). Pin the matching runtime.
+packageExtensions:
+  "@astrojs/astro2tsx":
+    dependencies:
+      "@emnapi/runtime": "1.11.3"
