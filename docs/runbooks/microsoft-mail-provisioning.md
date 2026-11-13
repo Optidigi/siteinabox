@@ -323,9 +323,12 @@ for the product decision and its security trade-off.
 
 1. In the Entra admin center of the partner tenant, on the Siteinabox partner app
    registration, add the delegated Microsoft Graph permissions
-   `Policy.Read.All` and `Policy.ReadWrite.SecurityDefaults`, and grant admin
-   consent in the partner tenant. Without them Partner Center rejects the
-   customer grant upgrade (`SIGN_IN_GRANT_UPGRADE_REJECTED_V2_RESTORED`).
+   `Policy.Read.All` and `Policy.ReadWrite.SecurityDefaults` (done 2026-11-13).
+   Do **not** grant admin consent for them in the partner tenant: they are only
+   consented in customer tenants through Partner Center, so the app cannot
+   change the partner tenant's own security defaults. Without the declared
+   permissions Partner Center rejects the customer grant upgrade
+   (`SIGN_IN_GRANT_UPGRADE_REJECTED_V2_RESTORED`).
 2. Add **Security Administrator** to `MICROSOFT_GDAP_ROLE_DEFINITION_IDS`
    (`194ae4cb-b126-40b2-bd5b-6091b380977d`) for manually requested
    relationships. Automatic runs use the contract role list, which now includes it.
