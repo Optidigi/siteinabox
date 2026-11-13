@@ -318,6 +318,22 @@
       "role": "advisory",
       "sha256": "bc467b458a30390791b300f5f3c8a8394c891b0b15331a1fded06a1112cc1212",
       "securityHash": "9e37efbd5eed70461918201a254823223845a88989c19059f1d9f1b535178898"
+    },
+    {
+      "id": "GHSA-mh32-jxcr-mh9f",
+      "url": "https://api.github.com/advisories/GHSA-mh32-jxcr-mh9f",
+      "kind": "github-advisory",
+      "role": "advisory",
+      "sha256": "4fb399040360073d941966ccf2e204bca05ac42e0e51fd5008e761b7ba72bdf2",
+      "securityHash": "777f090f71e5394bab96078857eefe5d32c04dec772adf5ec0853b5d0e716e79"
+    },
+    {
+      "id": "GHSA-r3h5-4585-7x3w",
+      "url": "https://api.github.com/advisories/GHSA-r3h5-4585-7x3w",
+      "kind": "github-advisory",
+      "role": "advisory",
+      "sha256": "34e0b2dae06b7b756b49f116f2909b6d73dde9c6c91c3369851ad319c992b3cb",
+      "securityHash": "b86dc78824205e01967a86aec3a026f464e72455dc810a7fae7c5159f956c88d"
     }
   ],
   "publisherConstraints": [
@@ -1153,6 +1169,128 @@
       "issue": "https://github.com/Optidigi/siteinabox/issues/167",
       "sources": [
         "scanner-release"
+      ]
+    },
+    {
+      "scope": "full",
+      "id": "GHSA-mh32-jxcr-mh9f",
+      "package": "astro",
+      "version": "7.4.2",
+      "severity": "low",
+      "paths": [
+        "apps__landing>astro",
+        "apps__renderer>@astrojs/node>astro",
+        "apps__renderer>astro"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: astro <= 7.4.4 XSS via attribute injection in dynamic tag names; fixed in 7.4.5. Exposure in Siteinabox templates is not assessed; no waiver. Upgrade tracked in the linked issue (astro 7.4.7 currently breaks the renderer type-check through mixed @emnapi runtimes).",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2027-02-11T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-mh32-jxcr-mh9f"
+      ]
+    },
+    {
+      "scope": "full",
+      "id": "GHSA-r3h5-4585-7x3w",
+      "package": "@astrojs/node",
+      "version": "11.1.9",
+      "severity": "moderate",
+      "paths": [
+        "apps__renderer>@astrojs/node"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: @astrojs/node <= 11.1.11 / astro <= 7.4.6 image endpoint can read a case-variant sibling of the output directory; fixed in astro 7.4.7 and @astrojs/node 11.1.12. Exposure is not assessed; no waiver. Upgrade tracked in the linked issue.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2026-12-13T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-r3h5-4585-7x3w"
+      ]
+    },
+    {
+      "scope": "full",
+      "id": "GHSA-r3h5-4585-7x3w",
+      "package": "astro",
+      "version": "7.4.2",
+      "severity": "moderate",
+      "paths": [
+        "apps__landing>astro",
+        "apps__renderer>@astrojs/node>astro",
+        "apps__renderer>astro"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: @astrojs/node <= 11.1.11 / astro <= 7.4.6 image endpoint can read a case-variant sibling of the output directory; fixed in astro 7.4.7 and @astrojs/node 11.1.12. Exposure is not assessed; no waiver. Upgrade tracked in the linked issue.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2026-12-13T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-r3h5-4585-7x3w"
+      ]
+    },
+    {
+      "scope": "production",
+      "id": "GHSA-mh32-jxcr-mh9f",
+      "package": "astro",
+      "version": "7.4.2",
+      "severity": "low",
+      "paths": [
+        "apps__landing>astro",
+        "apps__renderer>@astrojs/node>astro",
+        "apps__renderer>astro"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: astro <= 7.4.4 XSS via attribute injection in dynamic tag names; fixed in 7.4.5. Exposure in Siteinabox templates is not assessed; no waiver. Upgrade tracked in the linked issue (astro 7.4.7 currently breaks the renderer type-check through mixed @emnapi runtimes).",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2027-02-11T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-mh32-jxcr-mh9f"
+      ]
+    },
+    {
+      "scope": "production",
+      "id": "GHSA-r3h5-4585-7x3w",
+      "package": "@astrojs/node",
+      "version": "11.1.9",
+      "severity": "moderate",
+      "paths": [
+        "apps__renderer>@astrojs/node"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: @astrojs/node <= 11.1.11 / astro <= 7.4.6 image endpoint can read a case-variant sibling of the output directory; fixed in astro 7.4.7 and @astrojs/node 11.1.12. Exposure is not assessed; no waiver. Upgrade tracked in the linked issue.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2026-12-13T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-r3h5-4585-7x3w"
+      ]
+    },
+    {
+      "scope": "production",
+      "id": "GHSA-r3h5-4585-7x3w",
+      "package": "astro",
+      "version": "7.4.2",
+      "severity": "moderate",
+      "paths": [
+        "apps__landing>astro",
+        "apps__renderer>@astrojs/node>astro",
+        "apps__renderer>astro"
+      ],
+      "state": "under_investigation",
+      "reason": "Published 2026-11-13: @astrojs/node <= 11.1.11 / astro <= 7.4.6 image endpoint can read a case-variant sibling of the output directory; fixed in astro 7.4.7 and @astrojs/node 11.1.12. Exposure is not assessed; no waiver. Upgrade tracked in the linked issue.",
+      "reviewOwner": "Optidigi security maintainer",
+      "reviewedAt": "2026-11-13T20:21:42.000Z",
+      "deadline": "2026-12-13T20:21:42.000Z",
+      "issue": "https://github.com/Optidigi/siteinabox/issues/172",
+      "sources": [
+        "GHSA-r3h5-4585-7x3w"
       ]
     }
   ],
