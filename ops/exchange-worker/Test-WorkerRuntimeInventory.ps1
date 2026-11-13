@@ -11,7 +11,8 @@ try {
     Set-Content (Join-Path $runtime 'example.deps.json') '{"runtimeTarget":{"name":"synthetic"}}'
     Set-Content (Join-Path $modules 'unmapped.dll') 'not a managed assembly'
     $exchangeModule = Get-Module -ListAvailable ExchangeOnlineManagement | Select-Object -First 1
-    Copy-Item (Join-Path $exchangeModule.ModuleBase 'netCore/msvcp140.dll') (Join-Path $other 'native.dll')
+    # A Windows-native PE shipped by the pinned module (3.11 no longer bundles msvcp140.dll).
+    Copy-Item (Join-Path $exchangeModule.ModuleBase 'netCore/runtimes/win-x64/native/msalruntime.dll') (Join-Path $other 'native.dll')
     New-Item -ItemType SymbolicLink -Path (Join-Path $runtime 'missing.so') -Target (Join-Path $fixture 'unavailable.so') | Out-Null
     $result = (& $InventoryPath -Roots @($runtime.FullName, $modules.FullName) | ConvertFrom-Json)
     if ($result.files.Count -ne 6) { throw 'Inventory omitted a runtime or nested module file' }

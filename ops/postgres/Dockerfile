@@ -6,7 +6,7 @@ COPY ops/native-components /native-recipes
 RUN sh /native-recipes/build.sh gosu-1.20
 
 FROM postgres:18.6-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
-RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 libcurl=8.23.0-r0 libxslt=1.1.43-r4
+RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 krb5-libs=1.22.3-r0 libcurl=8.23.0-r0 libxslt=1.1.43-r4
 COPY --from=native-tools /out/gosu /usr/local/bin/gosu
 COPY --from=native-tools /out/notices/ /usr/local/share/native-notices/gosu/
 RUN gosu --version | grep '1.20' \
