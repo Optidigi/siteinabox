@@ -417,18 +417,18 @@
     "publishedAt": "2026-10-20T22:04:56Z"
   },
   "nativeBuilder": {
-    "version": "1.27.3",
-    "reference": "docker.io/library/golang:1.27.3-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb",
+    "version": "1.27.4",
+    "reference": "docker.io/library/golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf",
     "platforms": [
       {
-        "digest": "sha256:bff16a94c0b4b6d9642581e2a3aa81beb3edb940b2f5a3aac1d22c6a68cb7747",
+        "digest": "sha256:ea30e25680a5470bac02b08bb0e0a735fb75bd0ab7d431b9b95ee0abef362586",
         "platform": {
           "architecture": "amd64",
           "os": "linux"
         }
       },
       {
-        "digest": "sha256:52efed73b4accb3fe90c2d53e297c917c578f80c995da88a4f0770d65cf49de1",
+        "digest": "sha256:5f8b46174c4070eb2f4a5122aec47fc6765bf58ac8f592f00b5232524bf65e7d",
         "platform": {
           "architecture": "arm",
           "os": "linux",
@@ -436,7 +436,7 @@
         }
       },
       {
-        "digest": "sha256:9958accf016d93be918d548fe603bafec3d2359870cdf7402940c4e1727cffad",
+        "digest": "sha256:98c04012f4416e4057c9f1a103990ad42e8c99a548fa22c1e0a10246ea573293",
         "platform": {
           "architecture": "arm",
           "os": "linux",
@@ -444,7 +444,7 @@
         }
       },
       {
-        "digest": "sha256:ee0dcdc452cb73890363fbef65fc333aeb0da7c24ba52f2c6428a37b0e7f4f1c",
+        "digest": "sha256:e8e55b7bf3a0faeba720580aa7e4acc04d516e424a5b275eee4f55e98f28dffd",
         "platform": {
           "architecture": "arm64",
           "os": "linux",
@@ -452,28 +452,21 @@
         }
       },
       {
-        "digest": "sha256:7eadb9cbb0aab2649418025b8472a770195e9a94921309519896514de85bba7f",
+        "digest": "sha256:3fa3141af405cd501efee09fa14c8429514f8a3f88b36cfc183a7a60c197c879",
         "platform": {
           "architecture": "386",
           "os": "linux"
         }
       },
       {
-        "digest": "sha256:18b7e8d84b36bcd5ebb804451004011e3c749b0e22894f3dd2033f9862a861c6",
+        "digest": "sha256:ae80c89e4dbdc28b7ab4ade2a893e45d001bbf63b219decfd697fea9b2fd4225",
         "platform": {
           "architecture": "ppc64le",
           "os": "linux"
         }
       },
       {
-        "digest": "sha256:4877448f1426e1d0aaf8e07aa9f178e59820baae5fb3b8cd05b2a49cbf5167d4",
-        "platform": {
-          "architecture": "riscv64",
-          "os": "linux"
-        }
-      },
-      {
-        "digest": "sha256:4b9fd87ec6c3fb9a4175aa000f26c409b794e564fc7e04082a91dab866ab93df",
+        "digest": "sha256:2b41a7875d65987e963685847562478f6a3375a354047ab41f4187493a804801",
         "platform": {
           "architecture": "s390x",
           "os": "linux"
@@ -482,6 +475,6 @@
     ],
     "buildOnly": true,
     "verificationOnly": false,
-    "createdAt": "2026-10-21T22:58:12.197499363Z"
+    "createdAt": "2026-11-10T18:20:56.574365446Z"
   }
 }

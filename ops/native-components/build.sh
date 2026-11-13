@@ -8,7 +8,7 @@ case "${1:-}" in
   gosu-1.20) component=gosu; version=1.20; tag=1.20; commit=29b939aa5bd4dc588af765b8248f6e39150d2565; repo=https://github.com/tianon/gosu; package=.; license=LICENSE ;;
   *) echo 'Choose a reviewed native build variant' >&2; exit 1 ;;
 esac
-[ "$(go env GOVERSION)" = go1.27.3 ]
+[ "$(go env GOVERSION)" = go1.27.4 ]
 [ "$(go env GOOS)/$(go env GOARCH)" = linux/amd64 ]
 recipes=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 work=$(mktemp -d)
@@ -34,7 +34,7 @@ fi
 [ -z "$(git status --porcelain)" ]
 /out/"$component" --version | grep -F "$version"
 go version -m /out/"$component" > /out/notices/build-info.txt
-grep -F 'go1.27.3' /out/notices/build-info.txt
+grep -F 'go1.27.4' /out/notices/build-info.txt
 grep -F "vcs.revision=$commit" /out/notices/build-info.txt
 if grep -F 'vcs.modified=true' /out/notices/build-info.txt; then exit 1; fi
 grep -F 'golang.org/x/sys' /out/notices/build-info.txt | grep -F 'v0.44.0'
