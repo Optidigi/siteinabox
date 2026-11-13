@@ -71,6 +71,7 @@ import { accountLinkDispatchTask } from "@/lib/jobs/accountLinkDispatchTask"
 import { purgeMicrosoftMailSetupSecretsTask } from "@/lib/jobs/purgeMicrosoftMailSetupSecretsTask"
 import { reconcileMicrosoftMailTask } from "@/lib/jobs/reconcileMicrosoftMailTask"
 import { reconcileMicrosoftMailRenewalsTask } from "@/lib/jobs/reconcileMicrosoftMailRenewalsTask"
+import { reconcileMicrosoftMailSignInTask } from "@/lib/jobs/reconcileMicrosoftMailSignInTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
 import { renewDomainTask } from "@/lib/jobs/renewDomainTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
@@ -228,6 +229,7 @@ export default buildConfig({
       purgeMicrosoftMailSetupSecretsTask,
       reconcileMicrosoftMailTask,
       reconcileMicrosoftMailRenewalsTask,
+      reconcileMicrosoftMailSignInTask,
       requestMollieRefundTask,
     ],
     enableConcurrencyControl: true,

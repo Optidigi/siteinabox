@@ -17,33 +17,25 @@ function setup() {
  const form=view.container.querySelector("form");if(!form)throw Error("Mail form missing")
  return ()=>new window.FormData(form)
 }
-it("does not silently add an info alias when typing the first mailbox",()=>{
+it("offers no alias or shared inbox options",()=>{
  const data=setup()()
- expect(data.get("infoAliasTarget")).toBe("")
+ expect(data.get("infoAliasTarget")).toBeNull()
+ expect(screen.queryByRole("button",{name:"addInfoAlias"})).toBeNull()
 })
-it("submits a valid shared info request after entering a mailbox",()=>{
+it("offers info@ and admin@ as paid-account name suggestions and never a shared inbox",()=>{
  const read=setup()
+ expect(screen.queryByRole("checkbox",{name:/Shared info@/})).toBeNull()
  fireEvent.click(screen.getByRole("button",{name:"addMailbox"}))
- fireEvent.change(screen.getAllByLabelText("mailboxName")[1]!,{target:{value:"aslan"}})
- fireEvent.change(screen.getAllByLabelText("displayName")[1]!,{target:{value:"Aslan"}})
- fireEvent.change(screen.getAllByLabelText("setupEmail")[1]!,{target:{value:"aslan.setup@example.test"}})
- fireEvent.click(screen.getByRole("checkbox",{name:/Shared info@customer.test/}))
+ fireEvent.click(screen.getByRole("button",{name:"info@"}))
+ fireEvent.change(screen.getAllByLabelText("displayName")[1]!,{target:{value:"Info"}})
+ fireEvent.change(screen.getAllByLabelText("setupEmail")[1]!,{target:{value:"info.setup@example.test"}})
  const data=read()
- const parsed=parseMicrosoftMailProvisioningRequest({tenantId:56,domain:"customer.test",customer,mailboxUsers:JSON.parse(String(data.get("mailboxUsers"))),infoSharedMailbox:data.get("infoSharedMailbox")==="on",retainInfoForward:false,infoAliasTarget:String(data.get("infoAliasTarget")??"")})
- expect(parsed, parsed.ok ? "" : parsed.issues.map(issue=>issue.message).join(" ")).toMatchObject({ok:true,value:{infoSharedMailbox:true,infoAliasTarget:null,quantity:2}})
+ expect(data.get("infoSharedMailbox")).toBeNull()
+ const parsed=parseMicrosoftMailProvisioningRequest({tenantId:56,domain:"customer.test",customer,mailboxUsers:JSON.parse(String(data.get("mailboxUsers"))),retainInfoForward:false,infoAliasTarget:String(data.get("infoAliasTarget")??"")})
+ expect(parsed, parsed.ok ? "" : parsed.issues.map(issue=>issue.message).join(" ")).toMatchObject({ok:true,value:{quantity:2,infoAliasTarget:null}})
+ expect(parsed.ok && parsed.value.mailboxUsers.map(user=>user.userPrincipalName)).toEqual(["ardi@customer.test","info@customer.test"])
+ expect(parsed.ok && "infoSharedMailbox" in parsed.value).toBe(false)
 })
-it("keeps an explicitly selected alias following its mailbox and clears it when removed",()=>{
- const read=setup()
- fireEvent.click(screen.getByRole("button",{name:"addInfoAlias"}))
- expect(read().get("infoAliasTarget")).toBe("ardi@customer.test")
- fireEvent.change(screen.getByLabelText("mailboxName"),{target:{value:"aslan"}})
- expect(read().get("infoAliasTarget")).toBe("aslan@customer.test")
- fireEvent.click(screen.getByRole("button",{name:"removeAlias"}))
- expect(read().get("infoAliasTarget")).toBe("")
- fireEvent.click(screen.getByRole("checkbox",{name:/Shared info@customer.test/}))
- expect(read().get("infoAliasTarget")).toBe("")
-})
-
 it("keeps an initial manager-approved mailbox count bounded",()=>{
  render(<CustomerMailOrderForm tenantId={56} tenantName="Fixture" tenantDomain="customer.test" userName="Owner" userEmail="operator@example.test" approvedMailboxCount={2} />)
  expect(screen.getAllByLabelText("mailboxName")).toHaveLength(2)

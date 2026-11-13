@@ -125,6 +125,7 @@
     "removeMailbox": "Mailbox {number} verwijderen",
     "addMailbox": "Mailbox toevoegen",
     "addInfoAlias": "Alias toevoegen",
+    "suggestedNames": "Suggesties:",
     "infoAliasSummary": "info@{domain} is een alias voor {target}.",
     "deliveredTo": "ontvangen in",
     "chooseMailbox": "Kies een mailbox",

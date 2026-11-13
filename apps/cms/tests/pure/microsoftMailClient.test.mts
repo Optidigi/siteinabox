@@ -113,7 +113,7 @@ describe("Microsoft mail client mock adapter", () => {
     ])
     assert.equal(
       (calls[1]?.body as { passwordProfile: { forceChangePasswordNextSignIn: boolean } }).passwordProfile.forceChangePasswordNextSignIn,
-      true,
+      false,
     )
     assert.deepEqual((calls[2]?.body as { addLicenses: Array<{ skuId: string }> }).addLicenses, [
       { skuId: "sku-basic-eea", disabledPlans: [] },

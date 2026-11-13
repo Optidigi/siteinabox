@@ -52,6 +52,7 @@ const ports = (overrides: Partial<MicrosoftMailProvisioningPorts> = {}): Microso
     mca_acceptance: complete,
     gdap: complete,
     application_consent: complete,
+    sign_in_policy: complete,
     subscription: complete,
     domain_verification: complete,
     info_forward: complete,

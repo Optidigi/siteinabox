@@ -17,6 +17,8 @@ import { refreshCustomerMailQuote } from "./actions"
 import { MailOrderConfirmation } from "./MailOrderConfirmation"
 import { MailProgressRefresh } from "./MailProgressRefresh"
 import { MailboxAccess } from "./MailboxAccess"
+import { MailSignInSecurity } from "./MailSignInSecurity"
+import { readSignInPolicy } from "@/lib/microsoftMailProvisioning/signInPolicy"
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { externalMailPaymentSchema } from "@/lib/microsoftMailProvisioning/externalPayment"
 import { relationshipId } from "@/lib/relationshipId"
@@ -142,6 +144,7 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
     <PageHeader title={t("title")} subtitle={t("subtitle")} />
     {mailService.status === "active" && !pendingMailOrder && params.new !== "1" ? <Button asChild variant="outline" className="w-fit"><Link href={`${basePath}?new=1`}>+ {t("addMailbox")}</Link></Button> : null}
     {user.role === "super-admin" ? <p className="rounded-base border p-3 text-sm">Operator: {user.email} · {ctx.tenant.name}. Actions are recorded under your administrator identity.</p> : null}
+    {mailService.status === "active" ? <MailSignInSecurity tenantId={ctx.tenant.id} policy={readSignInPolicy(mailService.signInPolicy, mailService.createdAt)} nl={nl} /> : null}
     <MailProgressRefresh active={Boolean(order && ["open", "pending"].includes(order.paymentStatus) || order?.state === "fulfillment_pending")} />
     {selected && !unsubmittedDraft && status ? <Card>
       <CardHeader>
@@ -185,7 +188,6 @@ export async function CustomerEmailWorkspace({ searchParams, workspace }: {
       userName={user.name ?? ""}
       userEmail={user.email ?? ""}
       organization={organization}
-      allowInfoAlias={!mailService.infoAliasTarget && !mailService.infoForwardTo && !asRecord(mailService.renewalData)?.infoSharedMailbox}
     /> : null}
   </div>
 }

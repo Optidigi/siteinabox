@@ -203,6 +203,7 @@ async function fixtureLaunch(
             "Domain Name Administrator",
             "Exchange Administrator",
             "Cloud Application Administrator",
+            "Security Administrator",
           ]
             .map((r) => `<p>${r}</p>`)
             .join("") +

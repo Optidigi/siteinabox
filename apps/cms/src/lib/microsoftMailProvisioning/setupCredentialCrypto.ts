@@ -1,5 +1,5 @@
 import "server-only"
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
+import { createCipheriv, createDecipheriv, randomBytes, randomInt } from "node:crypto"
 
 const keyBytes = (key: string): Buffer => {
   const trimmed = key.trim()
@@ -29,5 +29,19 @@ export function decryptMicrosoftMailSetupCredential(value: string, key: string):
     return Buffer.concat([decipher.update(Buffer.from(ciphertextEncoded, "base64url")), decipher.final()]).toString("utf8")
   } catch {
     throw new Error("Mailbox setup credential could not be decrypted.")
+  }
+}
+
+const passwordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+
+/**
+ * Initial mailbox password. The customer keeps it (no forced change on first sign-in),
+ * so it is long but readable: four groups of five unambiguous characters, about 116 bits,
+ * always containing upper case, lower case and a digit for Entra complexity rules.
+ */
+export function generateMailboxPassword(): string {
+  for (;;) {
+    const value = Array.from({ length: 4 }, () => Array.from({ length: 5 }, () => passwordAlphabet[randomInt(passwordAlphabet.length)]).join("")).join("-")
+    if (/[A-Z]/.test(value) && /[a-z]/.test(value) && /[0-9]/.test(value)) return value
   }
 }

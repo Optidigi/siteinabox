@@ -24,6 +24,7 @@ export function createMicrosoftMailProvisioningMockPorts(): MicrosoftMailProvisi
     mca_acceptance: call("Microsoft Admin Center", "MCA acceptance recorded"),
     gdap: call("Microsoft Graph", "GDAP accepted and access assigned"),
     application_consent: call("Microsoft Entra", "partner app consent recorded"),
+    sign_in_policy: call("Microsoft Graph", "security defaults off (password-only sign-in)"),
     subscription: async ({ run, request }) => ({
       kind: "complete",
       data: {

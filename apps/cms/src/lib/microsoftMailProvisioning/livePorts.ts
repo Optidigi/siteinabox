@@ -1,9 +1,10 @@
 import { microsoftMailProviderConsent } from "./consentIdentity.ts"
 import "server-only"
-import { createHash, randomBytes } from "node:crypto"
+import { createHash } from "node:crypto"
 import type { Payload } from "payload"
 import type { SendEmailOptions } from "../email/sendEmail.ts"
-import { MicrosoftMailClient, MicrosoftApiError, MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, type MicrosoftTokenProvider } from "./microsoft.ts"
+import { MicrosoftMailClient, MicrosoftApiError, MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, MAIL_SIGN_IN_GRANT_VERSION, mailSignInGraphScopes, delegatedTokenScopes, type MicrosoftTokenProvider } from "./microsoft.ts"
+import { readSignInPolicy, reconcileSignInPolicy } from "./signInPolicy.ts"
 import { MicrosoftTokenRequestError } from "./microsoftAuth.ts"
 import { createPartnerTokenProvider } from "./partnerConnection.ts"
 import { CloudflareMailDnsClient } from "./cloudflare.ts"
@@ -15,7 +16,7 @@ import { discoverMicrosoftTenant, microsoftInitialDomainCandidate } from "./tena
 import { evaluateMailAuthority, requiredMailRoleIds, type MailAuthority } from "./mailAuthority.ts"
 import { ManagedMailBootstrapClient, createMailBootstrapJob } from "./managedBootstrap.ts"
 import { selectMailGdapRoles } from "./gdapCapabilities.ts"
-import { encryptMicrosoftMailSetupCredential } from "./setupCredentialCrypto.ts"
+import { encryptMicrosoftMailSetupCredential, generateMailboxPassword } from "./setupCredentialCrypto.ts"
 import { createMicrosoftMailSetupToken } from "./setupTokenStore.ts"
 import type { MicrosoftMailProvisioningPorts, MicrosoftMailProvisioningRun } from "./workflow.ts"
 
@@ -99,6 +100,23 @@ export function createMicrosoftMailLiveClients(input: { payload?: Payload; env?:
   const exchange = new ExchangeWorkerClient({ endpoint: required("EXCHANGE_WORKER_URL"), sharedSecret: required("EXCHANGE_WORKER_SHARED_SECRET"), fetchImpl })
   const pax8 = new Pax8Client({ clientId: required("PAX8_CLIENT_ID"), clientSecret: required("PAX8_CLIENT_SECRET"), audience: "https://api.pax8.com", fetchImpl })
   return { env, required, partnerTenantId, roleIds, securityGroupId, tokenProvider, partnerUpn, microsoft, cloudflare, exchange, pax8 }
+}
+
+/**
+ * The sign-in grant must be both recorded tenant-wide and present in a fresh delegated
+ * token. Consent alone, or a successful read, is not treated as write authority.
+ */
+export async function signInGrantAuthority(microsoft: MicrosoftMailClient, tokenProvider: MicrosoftTokenProvider, tenantId: string):
+  Promise<{ status: "ready" } | { status: "waiting" | "blocked"; code: string }> {
+  try {
+    if (!await microsoft.customerApplicationGrantsVerified(tenantId, mailSignInGraphScopes)) return { status: "blocked", code: "SIGN_IN_GRANT_MISSING" }
+    const scopes = delegatedTokenScopes(await tokenProvider({ tenantId, resource: "graph" }))
+    if (!mailSignInGraphScopes.every(scope => scopes.has(scope))) return { status: "waiting", code: "SIGN_IN_TOKEN_SCOPE_PROPAGATING" }
+    return { status: "ready" }
+  } catch (error) {
+    const transient = !(error instanceof MicrosoftApiError) || error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500
+    return transient ? { status: "waiting", code: "SIGN_IN_AUTHORITY_READ_RETRYING" } : { status: "blocked", code: "SIGN_IN_AUTHORITY_UNVERIFIED" }
+  }
 }
 
 export function createMicrosoftMailLivePorts(input: {
@@ -290,6 +308,96 @@ export function createMicrosoftMailLivePorts(input: {
         return pause({ code: "MAIL_BOOTSTRAP_IN_PROGRESS", state: "consent_pending", message: "Customer administration is being configured automatically.", data: { mailAuthority: authority, mailBootstrapJobId: job.id, mailBootstrapStartedAt: startedAt } })
       }
       return complete({ gdapStatus: relationship.status, mailGdapRoleDefinitionIds: authority.grantedRoles, mailAuthority: authority })
+    },
+    sign_in_policy: async ({ run }) => {
+      const tenantId = customerTenantId(run)
+      if (!tenantId) return { kind: "manual_review", code: "MICROSOFT_TENANT_ID_REQUIRED" }
+      const data = stateData(run)
+      const prior = object(data.signInGrantUpgrade)
+      // Partner Center adds scopes only by replacing the application consent (DELETE,
+      // then one POST per resource). Each call is idempotent towards its target and its
+      // intent is persisted *before* it is sent (`next`), so a restart repeats the same
+      // call instead of guessing.
+      type Next = "revoke" | "graph" | "exchange" | "verify"
+      const journal = prior.version === MAIL_SIGN_IN_GRANT_VERSION && ["revoke", "graph", "exchange", "verify"].includes(String(prior.next))
+        ? { version: MAIL_SIGN_IN_GRANT_VERSION, next: prior.next as Next, startedAt: String(prior.startedAt), ...(typeof prior.submittedAt === "string" ? { submittedAt: prior.submittedAt } : {}) }
+        : null
+      const record = (patch: Record<string, unknown>) => ({ signInGrantUpgrade: { ...(journal ?? {}), version: MAIL_SIGN_IN_GRANT_VERSION, ...patch } })
+      if (!journal || journal.next === "verify") {
+        const authority = await signInGrantAuthority(microsoft, tokenProvider, tenantId)
+        if (authority.status === "ready") {
+          const services = await input.payload.find({ collection: "microsoft-mail-services", where: { tenant: { equals: run.tenantId } }, depth: 0, limit: 1, overrideAccess: true })
+          const service = services.docs[0]
+          if (!service) return { kind: "manual_review", code: "MAIL_SERVICE_NOT_FOUND" }
+          const now = new Date()
+          const policy = readSignInPolicy(service.signInPolicy, typeof service.createdAt === "string" ? service.createdAt : undefined)
+          let next
+          try {
+            next = await reconcileSignInPolicy(policy, {
+              readSecurityDefaultsEnabled: () => microsoft.getSecurityDefaultsEnabled(tenantId),
+              setSecurityDefaultsEnabled: enabled => microsoft.setSecurityDefaultsEnabled(tenantId, enabled),
+            }, now)
+          } catch (error) {
+            if (error instanceof MicrosoftApiError && [401, 403].includes(error.status)) {
+              // A just-approved Security Administrator delegation can take a while to apply.
+              const deniedSince = typeof data.signInPolicyDeniedSince === "string" ? data.signInPolicyDeniedSince : now.toISOString()
+              if (now.getTime() - Date.parse(deniedSince) < 1_800_000) return pause({ code: "SIGN_IN_POLICY_ACCESS_PROPAGATING", state: "consent_pending", message: "Waiting for the delegated security role to apply.", data: { signInPolicyDeniedSince: deniedSince } })
+              return { kind: "manual_review", code: "SIGN_IN_POLICY_ACCESS_DENIED" }
+            }
+            if (!(error instanceof MicrosoftApiError) || error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500) return pause({ code: "SIGN_IN_POLICY_RETRYING", state: "consent_pending", message: "Retrying the Microsoft sign-in setting." })
+            return { kind: "manual_review", code: "SIGN_IN_POLICY_REJECTED" }
+          }
+          // Do not overwrite a customer/operator request recorded while Microsoft was being called;
+          // the sign-in reconciliation applies it under the service lock.
+          const current = await input.payload.find({ collection: "microsoft-mail-services", where: { id: { equals: service.id } }, depth: 0, limit: 1, overrideAccess: true })
+          if (readSignInPolicy(current.docs[0]?.signInPolicy, service.createdAt).desiredAt === policy.desiredAt) {
+            await input.payload.update({ collection: "microsoft-mail-services", id: service.id, data: { signInPolicy: next.policy }, overrideAccess: true, context: { microsoftMailServiceMutation: true } })
+          }
+          // Propagation: wait for the requested setting to become visible before users sign in.
+          if (next.policy.issueCode === "SIGN_IN_POLICY_WRITE_UNVERIFIED") return pause({ code: next.policy.issueCode, state: "consent_pending", message: "Waiting for Microsoft to apply the sign-in setting." })
+          // A change made outside Siteinabox is recorded on the service for operators; it never blocks mailbox work.
+          return complete({ signInGrantVersion: MAIL_SIGN_IN_GRANT_VERSION, signInGrantVerifiedAt: now.toISOString(), signInGrantUpgrade: null, signInPolicyDeniedSince: null, signInPolicyObserved: next.policy.securityDefaults })
+        }
+        const since = Date.parse(journal?.submittedAt ?? journal?.startedAt ?? "")
+        if (journal && !(Date.now() - since < 1_800_000)) return { kind: "manual_review", code: "SIGN_IN_GRANT_UPGRADE_UNVERIFIED" }
+        if (journal || authority.code !== "SIGN_IN_GRANT_MISSING") {
+          if (!journal && authority.code === "SIGN_IN_AUTHORITY_UNVERIFIED") return { kind: "manual_review", code: authority.code }
+          return pause({ code: journal ? "SIGN_IN_GRANT_PROPAGATING" : authority.code, state: "consent_pending", message: "Waiting for Microsoft to issue the reviewed delegated access." })
+        }
+        const roles = Array.isArray(object(data.mailAuthority).grantedRoles) ? (object(data.mailAuthority).grantedRoles as unknown[]).map(value => String(value).toLowerCase()) : []
+        if (!roles.some(role => ["158c047a-c907-4556-b7ef-446551a6b5f7", "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3"].includes(role))) return { kind: "manual_review", code: "SIGN_IN_CONSENT_ROLE_MISSING" }
+        // Journal the intent first; the DELETE is sent on the next invocation.
+        return pause({ code: "SIGN_IN_GRANT_UPGRADING", state: "consent_pending", message: "Preparing the reviewed application grant.", data: record({ next: "revoke", startedAt: new Date().toISOString() }) })
+      }
+      const hash = createHash("sha256").update(`sign-in-consent:${run.id}:${tenantId}:${MAIL_SIGN_IN_GRANT_VERSION}:${journal.startedAt}`).digest("hex")
+      const requestId = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`
+      if (journal.next === "revoke") {
+        try { await microsoft.revokeCustomerApplicationConsent(tenantId) }
+        catch (error) {
+          if (!(error instanceof MicrosoftApiError && error.status === 404)) {
+            if (error instanceof MicrosoftApiError && error.status < 500 && error.status !== 408 && error.status !== 429) return { kind: "manual_review", code: "SIGN_IN_GRANT_REVOKE_REJECTED", data: record({ next: "verify" }) }
+            return pause({ code: "SIGN_IN_GRANT_UPGRADE_RETRYING", state: "consent_pending", message: "Retrying the application grant replacement." })
+          }
+        }
+        return pause({ code: "SIGN_IN_GRANT_UPGRADING", state: "consent_pending", message: "Replacing the application grant.", data: record({ next: "graph" }) })
+      }
+      const resource = journal.next === "graph" ? "graph" as const : "exchange" as const
+      try { await microsoft.consentCustomerApplication(tenantId, requestId, resource, mailSignInGraphScopes) }
+      catch (error) {
+        if (!(error instanceof MicrosoftApiError && error.status === 409)) {
+          const transient = !(error instanceof MicrosoftApiError) || error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500 || error.status === 400 && error.retryable === true
+          if (transient && Date.now() - Date.parse(journal.startedAt) < 1_800_000) return pause({ code: "SIGN_IN_GRANT_UPGRADE_RETRYING", state: "consent_pending", message: "Retrying the application grant replacement." })
+          // Never leave the tenant without the reviewed v2 grants: restore them, then stop for review.
+          let restored = true
+          for (const fallback of ["graph", "exchange"] as const) {
+            try { await microsoft.consentCustomerApplication(tenantId, `${requestId.slice(0, 35)}${fallback === "graph" ? "1" : "2"}`, fallback) }
+            catch (restoreError) { if (!(restoreError instanceof MicrosoftApiError && restoreError.status === 409)) restored = false }
+          }
+          return { kind: "manual_review", code: restored ? "SIGN_IN_GRANT_UPGRADE_REJECTED_V2_RESTORED" : "SIGN_IN_GRANT_UPGRADE_REJECTED_RESTORE_FAILED", data: record({ next: "verify" }) }
+        }
+      }
+      return pause({ code: "SIGN_IN_GRANT_UPGRADING", state: "consent_pending", message: "Submitting the reviewed application grant.",
+        data: record(resource === "graph" ? { next: "exchange" } : { next: "verify", submittedAt: new Date().toISOString() }) })
     },
     application_consent: async ({ run, request }) => {
       const tenantId = customerTenantId(run)
@@ -548,7 +656,7 @@ export function createMicrosoftMailLivePorts(input: {
         if (existing && !bundles[user.userPrincipalName]) return { kind: "manual_review", code: "MAILBOX_ALREADY_EXISTS_REQUIRES_RECONCILIATION" }
         let graphUser = existing
         if (!graphUser) {
-          const temporaryPassword = `Aa9!${randomBytes(27).toString("base64url")}`
+          const temporaryPassword = generateMailboxPassword()
           graphUser = await microsoft.createUser(tenantId, {
             userPrincipalName: user.userPrincipalName,
             displayName: user.displayName,

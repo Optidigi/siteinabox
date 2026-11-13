@@ -4,6 +4,22 @@ import { createHash, randomUUID } from "node:crypto"
 
 export type MicrosoftResource = "graph" | "partner_center" | "exchange"
 export const MICROSOFT_MAIL_APPLICATION_GRANT_VERSION = "microsoft-mail-app-grants-v2"
+export { MAIL_SIGN_IN_GRANT_VERSION, mailSignInGraphScopes } from "@siteinabox/contracts/microsoft-mail-authority"
+
+/**
+ * Reads the delegated `scp` claim of an access token this process just obtained.
+ * Used only as a capability gate (a fresh token must carry the reviewed scopes);
+ * it is never treated as signature validation or as proof of the GDAP role.
+ */
+export function delegatedTokenScopes(accessToken: string): Set<string> {
+  const segment = accessToken.split(".")[1]
+  if (!segment) return new Set()
+  try {
+    const claims = JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as unknown
+    const scp = claims && typeof claims === "object" && "scp" in claims && typeof claims.scp === "string" ? claims.scp : ""
+    return new Set(scp.split(/\s+/).filter(Boolean))
+  } catch { return new Set() }
+}
 
 export type MicrosoftTokenProvider = (input: {
   tenantId: string
@@ -292,8 +308,9 @@ export class MicrosoftMailClient {
       path: `/customers/${encodePath(customerTenantId)}/applicationconsents/${encodePath(this.#clientId)}` })
   }
 
-  async consentCustomerApplication(customerTenantId: string, requestId: string, resource?: "graph" | "exchange"): Promise<void> {
-    const grants = mailApplicationResources.map(resource => ({ enterpriseApplicationId: resource.resourceApplicationId, scope: resource.scopes.join(", ") }))
+  async consentCustomerApplication(customerTenantId: string, requestId: string, resource?: "graph" | "exchange", extraGraphScopes: readonly string[] = []): Promise<void> {
+    const grants = mailApplicationResources.map((resource, index) => ({ enterpriseApplicationId: resource.resourceApplicationId,
+      scope: [...new Set([...resource.scopes, ...(index === 0 ? extraGraphScopes : [])])].join(", ") }))
     // Partner Center requires a separate consent request for each resource.
     for (const [index, grant] of grants.entries()) {
       if (resource && (index === 0 ? "graph" : "exchange") !== resource) continue
@@ -317,7 +334,7 @@ export class MicrosoftMailClient {
   }
 
   /** Read back actual tenant-wide grants; a successful token/read is not write-scope evidence. */
-  async customerApplicationGrantsVerified(customerTenantId: string): Promise<boolean> {
+  async customerApplicationGrantsVerified(customerTenantId: string, extraGraphScopes: readonly string[] = []): Promise<boolean> {
     const graphApp = mailApplicationResources[0].resourceApplicationId, exchangeApp = mailApplicationResources[1].resourceApplicationId
     const appIds = [this.#clientId, graphApp, exchangeApp]
     const principals = await this.#listGraphPages<{ id?: string; appId?: string }>("/servicePrincipals", customerTenantId,
@@ -332,7 +349,7 @@ export class MicrosoftMailClient {
         .flatMap(grant => typeof grant.scope === "string" ? grant.scope.split(/\s+/) : []))
       return scopes.every(scope => granted.has(scope))
     }
-    return has(graphId, mailApplicationResources[0].scopes) && has(exchangeId, mailApplicationResources[1].scopes)
+    return has(graphId, [...mailApplicationResources[0].scopes, ...extraGraphScopes]) && has(exchangeId, mailApplicationResources[1].scopes)
   }
 
   async getDomain(customerTenantId: string, domain: string): Promise<MicrosoftDomain | null> {
@@ -480,7 +497,8 @@ export class MicrosoftMailClient {
         usageLocation: input.usageLocation,
         passwordProfile: {
           password: input.temporaryPassword,
-          forceChangePasswordNextSignIn: true,
+          // Login-only product: the delivered password is the customer's password.
+          forceChangePasswordNextSignIn: false,
         },
       },
     })
@@ -497,6 +515,19 @@ export class MicrosoftMailClient {
       operation: "license assignment",
       body: { addLicenses: [{ skuId, disabledPlans: [] }], removeLicenses: [] },
     })
+  }
+
+  /** Tenant security defaults (forced MFA registration). Throws when the response is not the documented shape. */
+  async getSecurityDefaultsEnabled(customerTenantId: string): Promise<boolean> {
+    const raw = object(await this.#request<unknown>({ resource: "graph", tenantId: customerTenantId, method: "GET", operation: "security defaults read",
+      path: "/policies/identitySecurityDefaultsEnforcementPolicy" }))
+    if (typeof raw.isEnabled !== "boolean") throw new MicrosoftApiError("security defaults read", 200, "unexpected_shape")
+    return raw.isEnabled
+  }
+
+  async setSecurityDefaultsEnabled(customerTenantId: string, isEnabled: boolean): Promise<void> {
+    await this.#request({ resource: "graph", tenantId: customerTenantId, method: "PATCH", operation: "security defaults update",
+      path: "/policies/identitySecurityDefaultsEnforcementPolicy", body: { isEnabled } })
   }
 
   async getMailboxSettings(customerTenantId: string, userId: string): Promise<unknown> {

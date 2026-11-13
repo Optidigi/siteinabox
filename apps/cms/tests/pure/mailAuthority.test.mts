@@ -9,7 +9,7 @@ test("default PRA delegation supports bootstrap but never mail administration", 
  const result = evaluateMailAuthority({ ...base, approvedRoleIds: partial, assignedRoleIds: partial })
  assert.equal(result.status, "not_ready")
  assert.equal(result.nextAction, "bootstrap_customer_admin")
- assert.deepEqual(result.missingRoles, [roles.domainNameAdministrator, roles.exchangeAdministrator, roles.cloudApplicationAdministrator])
+ assert.deepEqual(result.missingRoles, [roles.domainNameAdministrator, roles.exchangeAdministrator, roles.cloudApplicationAdministrator, roles.securityAdministrator])
 })
 test("full matching delegation is ready only for consent verification", () => {
  const result = evaluateMailAuthority(base)

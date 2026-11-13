@@ -27,8 +27,11 @@ domain must already be delegated to the authorized Cloudflare zone.
 ## Customer journey and email promise
 
 1. A customer owner chooses the email service, domain, mailbox names, reachable
-   setup recipients, optional `info@` handling, and reviews price, annual term
-   and legal authorization in Siteinabox.
+   setup recipients, and reviews price, annual term and legal authorization in
+   Siteinabox. Every inbox is a paid, licensed account. `info@` and `admin@` are
+   offered only as name suggestions; any name may be typed. New orders offer no
+   shared inboxes and no aliases: customers manage those in Outlook themselves.
+   Stored historic requests with a shared `info@` inbox or alias keep working.
 2. Siteinabox freezes the accepted intent. Provisioning cannot purchase or
    change supplier state until the matching payment (online or reviewed manual
    receipt/sponsorship evidence) is settled and the live-release gates permit it.
@@ -41,8 +44,10 @@ domain must already be delegated to the authorized Cloudflare zone.
    Exchange and DNS in resumable checkpoints, then sends a branded setup email
    to each distinct setup recipient in the batch. The message contains a
    one-use setup link (48-hour expiry), not a temporary password.
-5. The customer opens that link once to retrieve temporary sign-in details,
-   changes the password on first Microsoft sign-in, and follows progress in
+5. The customer opens that link once to retrieve the sign-in details and signs
+   in with just the email address and password: no forced password change and,
+   by default, no Microsoft Authenticator registration (see
+   [Password-only sign-in](#password-only-sign-in)). Progress is shown in
    Siteinabox. Normal payment, login, legal, renewal and other configured
    communications remain governed by their existing flows.
 
@@ -53,6 +58,34 @@ the Siteinabox UI, and actual supplier recipients/notice behavior are not yet
 proven by a live authorized order. Never describe the journey as “exactly one
 email from everyone.” The first authorized live order must record actual sender,
 recipient and message counts before that claim is reconsidered.
+
+## Password-only sign-in
+
+Product decision (2026-11-13): mailbox users sign in with only their address and
+password. Two Microsoft defaults are changed for that:
+
+- Users are created with `forceChangePasswordNextSignIn: false`. The delivered
+  password is long (four groups of five unambiguous characters, about 116 bits)
+  and is the customer's password.
+- The `sign_in_policy` provisioning step switches the customer tenant's
+  **security defaults** off before any mailbox user exists. Security defaults
+  otherwise force every user to register Microsoft Authenticator at first sign-in
+  and offer no skip.
+
+Customers can turn **two-step sign-in** on (and off again) in the email workspace.
+It is tenant-wide: it switches security defaults back on for every account of
+that customer. Siteinabox changes the setting only on the first observation or on
+an explicit customer/operator request made after the last observation; a change
+made outside Siteinabox is reported (`SIGN_IN_POLICY_CHANGED_OUTSIDE_SITEINABOX`)
+and never reverted automatically.
+
+This weakens account security for customers who keep the default: accounts are
+protected by a password only. Microsoft's mandatory MFA for admin portals is not
+affected, and does not apply to Outlook users. Microsoft does not document
+re-enabling security defaults after an administrator disabled them, nor rule it
+out, so the setting is monitored. Not yet proven by a live sign-in: that no other
+registration prompt (for example Microsoft's password-reset registration campaign
+announced for October 2026) interrupts a Business Basic user.
 
 ## Consent and authority
 

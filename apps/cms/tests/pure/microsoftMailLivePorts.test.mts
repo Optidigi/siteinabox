@@ -13,9 +13,12 @@ const groupResponse = (url: URL, id: string): Response | null => url.pathname.en
 
 const grantResponse = (url: URL, appId: string, granted = true): Response | null => {
  if (url.pathname.endsWith("/servicePrincipals")) return response({ value: [{id:"client-sp",appId},{id:"graph-sp",appId:"00000003-0000-0000-c000-000000000000"},{id:"exo-sp",appId:"00000002-0000-0ff1-ce00-000000000000"}] })
- if (url.pathname.endsWith("/oauth2PermissionGrants")) return response({ value: granted ? [{clientId:"client-sp",resourceId:"graph-sp",consentType:"AllPrincipals",scope:"Directory.Read.All Organization.Read.All Domain.ReadWrite.All User.ReadWrite.All LicenseAssignment.ReadWrite.All"},{clientId:"client-sp",resourceId:"exo-sp",consentType:"AllPrincipals",scope:"Exchange.Manage"}] : [] })
+ if (url.pathname.endsWith("/oauth2PermissionGrants")) return response({ value: granted ? [{clientId:"client-sp",resourceId:"graph-sp",consentType:"AllPrincipals",scope:"Directory.Read.All Organization.Read.All Domain.ReadWrite.All User.ReadWrite.All LicenseAssignment.ReadWrite.All Policy.Read.All Policy.ReadWrite.SecurityDefaults"},{clientId:"client-sp",resourceId:"exo-sp",consentType:"AllPrincipals",scope:"Exchange.Manage"}] : [] })
  return null
 }
+
+/** Unsigned test token whose delegated `scp` claim carries the reviewed sign-in scopes. */
+const delegatedToken = `e30.${Buffer.from(JSON.stringify({ scp: "Directory.Read.All User.ReadWrite.All Policy.Read.All Policy.ReadWrite.SecurityDefaults" })).toString("base64url")}.sig`
 
 class MemoryStore implements MicrosoftMailProvisioningStore {
   run: MicrosoftMailProvisioningRun
@@ -61,6 +64,8 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     let userSequence = 0
     let mxLocked = !sharedRecipient
     let mailboxesReady = true
+    let securityDefaultsEnabled = true
+    const savedSignInPolicies: unknown[] = []
     const users = new Map<string, Record<string, unknown>>()
     const env: NodeJS.ProcessEnv = {
       NODE_ENV: "test",
@@ -109,6 +114,10 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
           { recordType: "Mx", label: "@", mailExchange: "tap2case-nl.mail.protection.outlook.com", preference: 0 },
           { recordType: "CName", label: "autodiscover", canonicalName: "autodiscover.outlook.com" },
         ] })
+        if (pathname.endsWith("/policies/identitySecurityDefaultsEnforcementPolicy")) {
+          if (method === "PATCH") { securityDefaultsEnabled = object(body).isEnabled === true; return new Response(null, { status: 204 }) }
+          return response({ id: "00000000-0000-0000-0000-000000000000", isEnabled: securityDefaultsEnabled })
+        }
         if (pathname.endsWith("/subscribedSkus")) return response({ value: [{ skuId: "sku-basic-eea", skuPartNumber: "O365_BUSINESS_ESSENTIALS", prepaidUnits: { enabled: 2 } }] })
         if (pathname.includes("/users/") && method === "GET") { const found = users.get(pathname.split("/users/")[1] ?? ""); return found ? response(found) : response({ error: { code: "Request_ResourceNotFound" } }, 404) }
         if (pathname.endsWith("/users")) {
@@ -154,9 +163,13 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
       }
       throw new Error(`Unexpected mock HTTP request ${method} ${url.toString()}`)
     }
+    const servicePayload = {
+      find: async ({ collection }: { collection: string }) => { assert.equal(collection, "microsoft-mail-services"); return { docs: [{ id: 5, createdAt: "2026-11-01T00:00:00.000Z", signInPolicy: savedSignInPolicies.at(-1) ?? null }] } },
+      update: async ({ collection, data }: { collection: string; data: { signInPolicy: unknown } }) => { assert.equal(collection, "microsoft-mail-services"); savedSignInPolicies.push(data.signInPolicy); return {} },
+    } as unknown as Payload
     const ports = createMicrosoftMailLivePorts({
-      payload: {} as Payload,
-      tokenProvider: async () => "mock-delegated-token", partnerUserPrincipalName: "obo@partner.onmicrosoft.com",
+      payload: servicePayload,
+      tokenProvider: async () => delegatedToken, partnerUserPrincipalName: "obo@partner.onmicrosoft.com",
       env,
       fetchImpl,
       createSetupTokenImpl: async () => "mock-one-time-token-abcdefghijklmnopqrstuvwxyz1234567890",
@@ -199,6 +212,13 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     const store = new MemoryStore(run)
     const dnsReview = await advanceMicrosoftMailProvisioning({ run, store, ports })
     assert.equal(dnsReview.state, "dns_pending")
+    // Password-only sign-in is applied before any mailbox user exists.
+    assert.equal(securityDefaultsEnabled, false)
+    assert.ok(dnsReview.completedSteps.includes("sign_in_policy"))
+    assert.deepEqual(providerRequests.filter(entry => entry.url.pathname.endsWith("/identitySecurityDefaultsEnforcementPolicy") && entry.method === "PATCH").map(entry => entry.body), [{ isEnabled: false }])
+    assert.equal(providerRequests.findIndex(entry => entry.method === "PATCH" && entry.url.pathname.endsWith("/identitySecurityDefaultsEnforcementPolicy")) <
+      providerRequests.findIndex(entry => entry.method === "POST" && entry.url.pathname.endsWith("/users")) || !providerRequests.some(entry => entry.method === "POST" && entry.url.pathname.endsWith("/users")), true)
+    assert.equal(object(savedSignInPolicies.at(-1)).securityDefaults, "off")
     assert.equal(dnsReview.issueCode, "DNS_PREPARATION_CONFIRMATION_REQUIRED")
     assert.ok(Array.isArray(dnsReview.data.dnsPreparationChanges))
     const cutoverReviewInput = await store.update(run.id, {
@@ -211,14 +231,14 @@ describe("live provider orchestration with mocked HTTP boundaries", () => {
     assert.equal(cutoverReview.state, "dns_pending")
     assert.equal(cutoverReview.issueCode, "DNS_MX_CUTOVER_CONFIRMATION_REQUIRED")
     assert.ok(Array.isArray(cutoverReview.data.dnsCutoverChanges))
-    assert.equal(providerRequests.some(call => call.method === "PATCH"), false, "preparation and unconfirmed cutover never unlock existing mail DNS")
+    assert.equal(providerRequests.some(call => call.method === "PATCH" && call.url.hostname === "api.cloudflare.com"), false, "preparation and unconfirmed cutover never unlock existing mail DNS")
     const cutoverConfirmed = await store.update(run.id, {
       data: { ...cutoverReview.data, dnsCutoverConfirmed: true },
     })
     mailboxesReady = false
     const notReady = await ports.dns_cutover({ run: cutoverConfirmed, request: cutoverConfirmed.request })
     assert.equal(notReady.kind, "waiting")
-    assert.equal(providerRequests.some(call => call.method === "PATCH"), false, "mailbox propagation never unlocks existing mail DNS")
+    assert.equal(providerRequests.some(call => call.method === "PATCH" && call.url.hostname === "api.cloudflare.com"), false, "mailbox propagation never unlocks existing mail DNS")
     mailboxesReady = true
     const propagating = await advanceMicrosoftMailProvisioning({ run: cutoverConfirmed, store, ports })
     assert.equal(propagating.state, "exchange_pending")

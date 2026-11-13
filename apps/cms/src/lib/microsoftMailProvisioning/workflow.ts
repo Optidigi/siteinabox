@@ -16,6 +16,7 @@ export type MicrosoftMailProvisioningStep =
   | "mca_acceptance"
   | "gdap"
   | "application_consent"
+  | "sign_in_policy"
   | "subscription"
   | "domain_verification"
   | "info_forward"
@@ -93,6 +94,8 @@ export class MicrosoftMailProvisioningRunNotFoundError extends Error {
 }
 
 const readOnlySteps = new Set<MicrosoftMailProvisioningStep>(["tenant_identity", "mca_acceptance"])
+/** Steps that persist their own write intent before each provider call and resume from it. */
+const selfJournaledSteps = new Set<MicrosoftMailProvisioningStep>(["sign_in_policy"])
 
 const steps: readonly MicrosoftMailProvisioningStep[] = [
   "provider_company",
@@ -100,6 +103,8 @@ const steps: readonly MicrosoftMailProvisioningStep[] = [
   "tenant_identity",
   "gdap",
   "application_consent",
+  // Before any mailbox user exists or signs in: password-only sign-in (security defaults off).
+  "sign_in_policy",
   "mca_acceptance",
   "domain_verification",
   "dkim_prepare",
@@ -117,6 +122,7 @@ const pendingStateFor: Record<MicrosoftMailProvisioningStep, MicrosoftMailProvis
   mca_acceptance: "consent_pending",
   gdap: "consent_pending",
   application_consent: "consent_pending",
+  sign_in_policy: "consent_pending",
   subscription: "subscription_pending",
   domain_verification: "domain_pending",
   info_forward: "exchange_pending",
@@ -256,7 +262,7 @@ export async function advanceMicrosoftMailProvisioning(input: {
   for (const step of input.authorityOnly ? ["gdap", "application_consent"] as const : steps) {
     if (run.completedSteps.includes(step)) continue
     const priorStepState = providerStepStates(run.data)[step]
-    if (priorStepState === "started" && !readOnlySteps.has(step) || priorStepState === "uncertain") {
+    if (priorStepState === "started" && !readOnlySteps.has(step) && !selfJournaledSteps.has(step) || priorStepState === "uncertain") {
       return input.store.update(run.id, {
         state: transition(run.state, "manual_review"),
         issueCode: "provider_step_outcome_unknown",

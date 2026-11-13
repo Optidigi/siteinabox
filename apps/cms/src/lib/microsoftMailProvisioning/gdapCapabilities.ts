@@ -12,10 +12,12 @@ export function selectMailGdapRoles(grantedRoleIds: readonly string[]) {
   const domainAdministration = granted.has(roles.domainNameAdministrator)
   const exchangeAdministration = granted.has(roles.exchangeAdministrator)
   return {
-    consentRole, domainAdministration, exchangeAdministration, exchangeReadAccess: exchangeAdministration || granted.has(roles.globalReader),
+    consentRole, domainAdministration, exchangeAdministration, securityAdministration: granted.has(roles.securityAdministrator), exchangeReadAccess: exchangeAdministration || granted.has(roles.globalReader),
     roleDefinitionIds: [roles.userAdministrator, roles.licenseAdministrator, roles[consentRole],
       ...(domainAdministration ? [roles.domainNameAdministrator] : []),
       ...(exchangeAdministration ? [roles.exchangeAdministrator] : granted.has(roles.globalReader) ? [roles.globalReader] : []),
+      // Selected when present; authority evaluation reports it missing otherwise (bootstrap then adds it).
+      ...(granted.has(roles.securityAdministrator) ? [roles.securityAdministrator] : []),
     ],
   }
 }

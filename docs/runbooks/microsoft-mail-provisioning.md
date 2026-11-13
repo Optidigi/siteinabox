@@ -73,7 +73,8 @@ A Mollie test payment cannot unlock live provisioning.
 1. The owner enters the authorized domain, organization/signatory and mailbox
    list. Addresses are derived from the domain. Setup delivery addresses are
    required for this flow only; they are not Microsoft recovery addresses.
-   An optional **+ Alias toevoegen** adds `info@` to one requested mailbox.
+   Every inbox is a paid account; `info@` and `admin@` are offered as name
+   suggestions only. New orders offer no alias or shared-inbox option.
 2. The original form shows the retail total, VAT and amount due alongside all
    Microsoft, setup-authorization and Siteinabox agreement checkboxes. Explicit
    legal-language selection is required when the user's language is unavailable.
@@ -115,13 +116,14 @@ A Mollie test payment cannot unlock live provisioning.
    uncertain, still-locked or changed-snapshot results stop before MX edits.
 8. Exchange verifies DKIM CNAME resolution before enabling signing. Siteinabox
    sends one branded setup message per distinct setup recipient in the batch;
-   each mailbox has a 48-hour, one-use credential link. Temporary passwords
+   each mailbox has a 48-hour, one-use credential link. Passwords
    stay encrypted at rest and are never in email. Delivered setup addresses
    and run credential bundles are cleared; the existing mail-log retention
    policy still applies to delivery metadata.
 
-If an existing Cloudflare `info@` forward exists and no replacement alias is
-selected, the quote preserves its destination. Exchange creates a shared
+If an existing Cloudflare `info@` forward exists, no replacement alias is
+selected and no paid `info@` account is ordered, the quote preserves its
+destination. A paid `info@` account replaces the forward when MX moves to Microsoft. Exchange creates a shared
 `info@` mailbox and an external-forwarding rule/policy scoped to that mailbox.
 An existing licensed/conflicting recipient stops for review; the worker does
 not convert it or enable tenant-wide forwarding. Other unsupported routes or
@@ -272,7 +274,8 @@ quotes cannot be accepted as funding authority. No supplier order is created by
 approval, quote refresh or deployment. Live qualification must use only that
 bounded purchase authority and preserve existing forwarding until readiness.
 
-The shared info option replaces legacy forwarding, grants/verifies Full Access
+The shared info option (no longer offered for new orders; stored requests keep
+working) replaces legacy forwarding, grants/verifies Full Access
 and Send As for the requested users, and creates no extra licensed seat. No mail
 history migration is included. Microsoft application consent uses the internal
 Partner Center path and remains subject to actual delegated access.
@@ -311,16 +314,86 @@ statement, submits the chosen locale, and the backend validates the current
 registered document identities before recording the order. Missing or unapproved
 documents still block acceptance; there is no implicit Dutch fallback.
 
+## Password-only sign-in (security defaults)
+
+See the [contract](../contracts/microsoft-mail-provisioning.md#password-only-sign-in)
+for the product decision and its security trade-off.
+
+**One-time prerequisites (partner tenant):**
+
+1. In the Entra admin center of the partner tenant, on the Siteinabox partner app
+   registration, add the delegated Microsoft Graph permissions
+   `Policy.Read.All` and `Policy.ReadWrite.SecurityDefaults`, and grant admin
+   consent in the partner tenant. Without them Partner Center rejects the
+   customer grant upgrade (`SIGN_IN_GRANT_UPGRADE_REJECTED_V2_RESTORED`).
+2. Add **Security Administrator** to `MICROSOFT_GDAP_ROLE_DEFINITION_IDS`
+   (`194ae4cb-b126-40b2-bd5b-6091b380977d`) for manually requested
+   relationships. Automatic runs use the contract role list, which now includes it.
+
+**How a customer tenant gets there:** Security Administrator is part of the
+required mail roles. A delegation without it is `not_ready`, so the existing
+unattended bootstrap creates and approves a new relationship that includes it
+(Microsoft does not allow adding roles to an active relationship). The
+`sign_in_policy` step then upgrades the application grant with the versioned
+extension `microsoft-mail-sign-in-grants-v1` (journaled Partner Center DELETE,
+then one POST per resource; on rejection the v2 grants are restored), waits until
+a fresh delegated token carries the scopes, and switches security defaults off.
+New orders do this automatically. **Existing customers** move over on their next
+provisioning run (for example adding a mailbox); until then the operations page
+shows `SIGN_IN_GRANT_MISSING` for them, their sign-in setting is unchanged and the
+customer workspace shows sign-in as "still being set up". Because Security
+Administrator is now a required mail role, a seat increase for an existing
+customer first goes through the unattended bootstrap re-delegation (the
+authority-only check runs before the billable Pax8 quantity change). That needs
+the bootstrap worker to be qualified; until it is, such seat increases wait in
+authority verification. A failure in the later `sign_in_policy` step happens
+after the quantity change and stops for review like any other post-purchase step.
+
+**Deploy order:** let in-flight bootstrap jobs finish first. Their job binding
+includes the required role list, so a job started before this change stops with
+`MAIL_BOOTSTRAP_BINDING_CHANGED` after it. Then run the migration (additive:
+`microsoft_mail_services.sign_in_policy` and the job slug) and deploy the CMS and
+the mail-authority worker together (the worker now checks for Security
+Administrator before approving).
+
+**Monitoring:** the `reconcile-microsoft-mail-sign-in` job (every 10 minutes)
+applies customer requests and reads the setting for active services. The
+operations page lists each service's requested mode, observed security defaults
+and issue. Codes:
+
+| Code | Meaning | Action |
+| --- | --- | --- |
+| `SIGN_IN_POLICY_CHANGED_OUTSIDE_SITEINABOX` | Security defaults changed after Siteinabox applied the setting (Microsoft or an administrator). An admin exception is recorded. The customer sees the actual state and may re-request their choice. | Check the tenant, then use **Re-apply** on the operations page (reviewed checkbox). |
+| `SIGN_IN_POLICY_WRITE_UNVERIFIED` | The change is not visible yet. | Retries automatically. |
+| `SIGN_IN_GRANT_MISSING` | The customer grant lacks the sign-in scopes. | Upgraded by the next provisioning run. |
+| `SIGN_IN_POLICY_ACCESS_PROPAGATING` | Microsoft denied access; a just-approved role can take time. | Waits up to 30 minutes, then `SIGN_IN_POLICY_ACCESS_DENIED`. |
+| `SIGN_IN_POLICY_ACCESS_DENIED` / `SIGN_IN_POLICY_REJECTED` | Microsoft refused the read or write (missing role or scope). | Verify the delegation includes Security Administrator, then **Retry sign-in step** on the run. |
+| `SIGN_IN_GRANT_UPGRADE_UNVERIFIED` | The upgraded grant was not visible in a fresh token within 30 minutes. | Check the partner app permissions, then **Retry sign-in step** (gives a new 30-minute window). |
+| `SIGN_IN_CONSENT_ROLE_MISSING` | Cloud Application Administrator is not proven; no grant was touched. | Repair delegation, then **Retry sign-in step**. |
+| `SIGN_IN_GRANT_UPGRADE_REJECTED_RESTORE_FAILED` | Grant upgrade refused and the v2 grants could not be restored. | Urgent: repair the application consent before any other mail work. |
+
+Runs stopped with a `SIGN_IN_*` code are resumed from the run page with
+**Retry sign-in step** (reviewed checkbox). It re-verifies before any write and
+keeps an open grant journal instead of replaying it. **Repair application access**
+keeps the sign-in scopes once a run has applied them.
+
+**Rollback:** set a service back to two-step sign-in from the customer workspace
+(super-admin operator mode) to switch security defaults on. Removing the step
+from code does not change tenants that were already switched.
+
 ## Mailbox access and credential lifetime
 
 A fulfilled, paid order and ready live run expose mailbox usernames and Outlook
 sign-in links in the scoped customer workspace. Owner and super-admin access are
 checked server-side against the tenant, service, order and requested address.
 Password reveal and emailed setup links share one atomic claim per run/address.
-The temporary password is encrypted at rest, absent from initial HTML, and can
-be revealed once; retries cannot recreate an already consumed credential. Setup
+The password is encrypted at rest, absent from initial HTML, and can be revealed
+once; retries cannot recreate an already consumed credential. There is no forced
+change at first sign-in. Password resets are not implemented yet: Business Basic
+does not include self-service password reset, so a forgotten password currently
+needs an operator. Setup
 email groups mailboxes by the supplied existing delivery address. Never send
-temporary passwords directly in email or log them.
+passwords directly in email or log them.
 
 ## Automatic job startup
 

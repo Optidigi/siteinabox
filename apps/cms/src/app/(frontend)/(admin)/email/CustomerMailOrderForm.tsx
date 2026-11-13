@@ -16,7 +16,7 @@ import type { MicrosoftMailProvisioningRequest } from "@/lib/microsoftMailProvis
 type MailboxRow = { localPart: string; displayName: string; setupEmail: string }
 type Organization = { companyName: string; website: string; phone: string; registrationNumber: string; address: { street: string; city: string; postalCode: string; country: string } }
 
-export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, allowInfoAlias = true, tenantId, approvedMailboxCount, orderPricing, legalDocuments = [], userLocale = "en", initialRequest, basePath = "/email" }: {
+export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, userEmail, organization, tenantId, approvedMailboxCount, orderPricing, legalDocuments = [], userLocale = "en", initialRequest, basePath = "/email" }: {
   approvedMailboxCount?: number
   orderPricing?: { unitNetMinor: number; platformNetMinor: number; prepaidMaxGrossMinor?: number; operation?: "initial" | "seats"; periodEndsAt?: string }
   legalDocuments?: Array<{ locale: "nl" | "en"; version: string; termsHref: string; privacyHref: string; statement: string }>
@@ -29,7 +29,6 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   userName: string
   userEmail: string
   organization?: Organization
-  allowInfoAlias?: boolean
 }) {
   const t = useTranslations("emailService")
   const router = useRouter()
@@ -39,10 +38,6 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
   const [domain, setDomain] = useState(tenantDomain)
   const [tenantPrefix, setTenantPrefix] = useState(tenantDomain.split(".")[0] ?? "")
   const [users, setUsers] = useState<MailboxRow[]>(initialRequest?.mailboxUsers.map(user => ({ localPart: user.localPart, displayName: user.displayName, setupEmail: user.setupEmail })) ?? Array.from({ length: approvedMailboxCount ?? 1 }, () => ({ localPart: "", displayName: "", setupEmail: "" })))
-  const [infoSharedMailbox, setInfoSharedMailbox] = useState(initialRequest?.infoSharedMailbox === true)
-  const [showInfoAlias, setShowInfoAlias] = useState(Boolean(initialRequest?.infoAliasTarget))
-  const [infoAliasTarget, setInfoAliasTarget] = useState(initialRequest?.infoAliasTarget?.split("@")[0] ?? "")
-  const [aliasError, setAliasError] = useState(false)
   const defaultName = userName.trim().split(/\s+/)
   const [legalLocale, setLegalLocale] = useState(legalDocuments.some(document => document.locale === userLocale) ? userLocale : "")
   const legal = legalDocuments.find(document => document.locale === legalLocale)
@@ -59,18 +54,16 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
     if (actionState?.ok) router.replace(`${basePath}?request=${actionState.requestId}`)
   }, [actionState, router, basePath])
 
+  // Every mailbox is a paid account. info@ and admin@ are only name suggestions; any name may be typed.
+  const suggestedNames = ["info", "admin"].filter(name => !users.some(user => user.localPart === name))
+
   const updateUser = (index: number, field: keyof MailboxRow, value: string) => {
     if (field === "localPart") value = value.trim().toLowerCase()
-    const currentUser = users[index]
-    if (showInfoAlias && field === "localPart" && currentUser?.localPart === infoAliasTarget) setInfoAliasTarget(value)
     setUsers((current) => current.map((user, row) => row === index ? { ...user, [field]: value } : user))
   }
 
   const removeUser = (index: number) => {
-    const removed = users[index]
-    const remaining = users.filter((_, row) => row !== index)
-    setUsers(remaining)
-    if (removed?.localPart === infoAliasTarget) setInfoAliasTarget("")
+    setUsers((current) => current.filter((_, row) => row !== index))
   }
 
   const validateSection = (sectionStep: number): boolean => {
@@ -94,12 +87,6 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
         setStep(sectionStep)
         return
       }
-    }
-    if (showInfoAlias && (!users.some((user) => user.localPart === infoAliasTarget && user.localPart.trim()) || infoAliasTarget.toLowerCase() === "info")) {
-      event.preventDefault()
-      setAliasError(true)
-      setStep(1)
-      return
     }
   }
 
@@ -132,36 +119,20 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
       <input type="hidden" name="tenantPrefix" value={tenantPrefix} />
 
       <input type="hidden" name="mailboxUsers" value={JSON.stringify(users)} />
+      <datalist id="mailbox-name-suggestions">{suggestedNames.map(name => <option key={name} value={name} />)}</datalist>
       {users.map((user, index) => <div key={index} className="grid gap-3 rounded-base border p-3 md:grid-cols-[1fr_1fr_1.2fr_auto] md:items-end">
-        <Field id={`mailbox-local-${index}`} label={t("mailboxName")} placeholder="ardi" value={user.localPart} onChange={(value) => updateUser(index, "localPart", value)} required />
+        <div className="grid gap-2">
+          <Field id={`mailbox-local-${index}`} label={t("mailboxName")} placeholder="ardi" list="mailbox-name-suggestions" value={user.localPart} onChange={(value) => updateUser(index, "localPart", value)} required />
+          {!user.localPart && suggestedNames.length ? <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground"><span>{t("suggestedNames")}</span>{suggestedNames.map(name => <Button key={name} type="button" variant="outline" size="sm" onClick={() => updateUser(index, "localPart", name)}>{name}@</Button>)}</div> : null}
+        </div>
         <Field id={`mailbox-display-${index}`} label={t("displayName")} placeholder="Ardi Example" value={user.displayName} onChange={(value) => updateUser(index, "displayName", value)} required />
         <Field id={`mailbox-setup-${index}`} label={t("setupEmail")} type="email" placeholder="you@example.nl" value={user.setupEmail} onChange={(value) => updateUser(index, "setupEmail", value)} required />
         <Button type="button" variant="outline" aria-label={t("removeMailbox", { number: index + 1 })} disabled={users.length <= (approvedMailboxCount ?? 1)} onClick={() => removeUser(index)}><Trash2 aria-hidden /></Button>
       </div>)}
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" className="w-fit" disabled={users.length >= (approvedMailboxCount ?? 300)} onClick={() => setUsers((current) => [...current, { localPart: "", displayName: "", setupEmail: "" }])}><Plus aria-hidden /> {t("addMailbox")}</Button>
-        {allowInfoAlias && !infoSharedMailbox && !showInfoAlias ? <Button type="button" variant="outline" className="w-fit" onClick={() => {
-          setShowInfoAlias(true)
-          setInfoAliasTarget(users.find((user) => user.localPart)?.localPart ?? "")
-        }}><Plus aria-hidden /> {t("addInfoAlias")}</Button> : null}
       </div>
 
-      {allowInfoAlias && !showInfoAlias ? <label className="flex items-start gap-2 text-sm"><Checkbox name="infoSharedMailbox" checked={infoSharedMailbox} onCheckedChange={value => setInfoSharedMailbox(value === true)} /><span>Shared info@{domain} inbox · Full Access + Send As for all requested mailboxes. Replaces existing info@ forwarding.</span></label> : null}
-      <input type="hidden" name="infoAliasTarget" value={showInfoAlias && !infoSharedMailbox && infoAliasTarget ? `${infoAliasTarget}@${domain}` : ""} />
-      {showInfoAlias ? <div className="flex flex-wrap items-center gap-3 rounded-base border p-3">
-        <span className="text-sm font-medium">info@{domain || "…"}</span>
-        <span className="text-sm text-muted-foreground">{t("deliveredTo")}</span>
-        <Select value={infoAliasTarget || undefined} onValueChange={(value) => { setInfoAliasTarget(value); setAliasError(false) }}>
-          <SelectTrigger className="min-w-56 flex-1" aria-label={t("deliveredTo")}><SelectValue placeholder={t("chooseMailbox")} /></SelectTrigger>
-          <SelectContent>{users.flatMap((user) => user.localPart && user.localPart.toLowerCase() !== "info" ? <SelectItem key={user.localPart} value={user.localPart}>{user.displayName || user.localPart} · {user.localPart}@{domain}</SelectItem> : [])}</SelectContent>
-        </Select>
-        <Button type="button" variant="ghost" className="text-sm text-muted-foreground underline underline-offset-4" onClick={() => {
-          setShowInfoAlias(false)
-          setInfoAliasTarget("")
-          setAliasError(false)
-        }}>{t("removeAlias")}</Button>
-        {aliasError ? <p className="basis-full text-sm text-destructive">{t("chooseMailboxError")}</p> : null}
-      </div> : null}
 
       <Button type="button" className="w-fit" onClick={continueToReview}>{t("continue")}</Button>
     </section>
@@ -181,7 +152,6 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
       <div className="rounded-base border bg-muted/30 p-3 text-sm">
         <p className="font-medium">{t("orderStatus", { domain: domain || "…", quantity: users.length })}</p>
         <ul className="mt-2 grid gap-1">{users.map((user, index) => <li key={index}>{user.displayName || user.localPart || t("mailboxName")} · <strong>{user.localPart || "…"}@{domain || "…"}</strong></li>)}</ul>
-        {infoAliasTarget ? <p className="mt-2">info@{domain} · {t("deliveredTo")} <strong>{infoAliasTarget}@{domain}</strong></p> : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -220,11 +190,11 @@ export function CustomerMailOrderForm({ tenantName, tenantDomain, userName, user
 
 function Field(props: {
   id: string; label: string; name?: string; type?: string; placeholder?: string; defaultValue?: string;
-  value?: string; onChange?: (value: string) => void; required?: boolean
+  value?: string; onChange?: (value: string) => void; required?: boolean; list?: string
 }) {
   return <div className="grid gap-2">
     <Label htmlFor={props.id}>{props.label}</Label>
-    <Input id={props.id} name={props.name} type={props.type ?? "text"} placeholder={props.placeholder}
+    <Input id={props.id} name={props.name} type={props.type ?? "text"} placeholder={props.placeholder} list={props.list}
       defaultValue={props.value === undefined ? props.defaultValue : undefined} value={props.value}
       onChange={props.onChange ? (event) => props.onChange?.(event.target.value) : undefined} required={props.required} />
   </div>

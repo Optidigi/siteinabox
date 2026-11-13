@@ -9,13 +9,24 @@ export const mailGdapRoleIds = {
   domainNameAdministrator: "8329153b-31d0-4727-b945-745eb3bc5f31",
   exchangeAdministrator: "29232cdf-9323-42fd-ade2-1d097af3e4de",
   globalReader: "f2ef992c-3afb-46b9-b7cf-a126ee74c451",
+  /** Required to switch the tenant security-defaults policy (password-only sign-in product decision). */
+  securityAdministrator: "194ae4cb-b126-40b2-bd5b-6091b380977d",
 } as const
-export const requiredMailRoleIds: readonly string[] = [mailGdapRoleIds.userAdministrator, mailGdapRoleIds.licenseAdministrator, mailGdapRoleIds.domainNameAdministrator, mailGdapRoleIds.exchangeAdministrator, mailGdapRoleIds.cloudApplicationAdministrator]
+export const requiredMailRoleIds: readonly string[] = [mailGdapRoleIds.userAdministrator, mailGdapRoleIds.licenseAdministrator, mailGdapRoleIds.domainNameAdministrator, mailGdapRoleIds.exchangeAdministrator, mailGdapRoleIds.cloudApplicationAdministrator, mailGdapRoleIds.securityAdministrator]
 
 export const mailApplicationResources = [
   { resource: "graph", resourceApplicationId: "00000003-0000-0000-c000-000000000000", scopePrefix: "https://graph.microsoft.com", scopes: ["Directory.Read.All", "Organization.Read.All", "Domain.ReadWrite.All", "User.ReadWrite.All", "LicenseAssignment.ReadWrite.All"] },
   { resource: "exchange", resourceApplicationId: "00000002-0000-0ff1-ce00-000000000000", scopePrefix: "https://outlook.office365.com", scopes: ["Exchange.Manage"] },
 ] as const
+
+/**
+ * Versioned extension grant for the sign-in policy (read and switch tenant security
+ * defaults). It is kept outside `mailApplicationResources` so the reviewed v2 bootstrap
+ * grant catalogue and its readback stay unchanged; the CMS upgrades each tenant's
+ * grant explicitly in the `sign_in_policy` provisioning step.
+ */
+export const MAIL_SIGN_IN_GRANT_VERSION = "microsoft-mail-sign-in-grants-v1"
+export const mailSignInGraphScopes: readonly string[] = ["Policy.Read.All", "Policy.ReadWrite.SecurityDefaults"]
 
 export const MAIL_BOOTSTRAP_PROTOCOL = "siab-managed-mail-authority-v1"
 export type MailBootstrapInput = { runId: string; orderId: string; tenantId: string; initialDomain: string; domain: string; applicationId: string; partnerTenantId: string; groupId: string; sourceRelationshipId: string; targetRelationshipId: string }
