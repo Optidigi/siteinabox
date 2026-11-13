@@ -361,6 +361,7 @@ export class MicrosoftBootstrapBrowser {
             "Domain Name Administrator",
             "Exchange Administrator",
             "Cloud Application Administrator",
+            "Security Administrator",
           ])
             await (await one(page.getByText(role, { exact: true }))).waitFor()
           if (

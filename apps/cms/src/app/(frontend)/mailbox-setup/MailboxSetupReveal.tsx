@@ -43,13 +43,13 @@ export function MailboxSetupReveal() {
       <p>This one-time page shows the sign-in details for your new mailbox. The link expires after 48 hours and can be used once.</p>
       <Button type="button" className="w-fit" disabled={pending} onClick={reveal}>{pending ? "Opening secure setup…" : "Show mailbox sign-in details"}</Button>
     </> : <>
-      <p>Your temporary password is shown once. Microsoft will ask you to change it after sign-in.</p>
+      <p>Your password is shown once. Save it in a password manager now; you can keep using it. You can change it later in your Microsoft account.</p>
       <div className="grid gap-2">
         <label htmlFor="mailbox-setup-upn" className="text-sm font-medium">Mailbox sign-in</label>
         <div className="flex gap-2"><Input id="mailbox-setup-upn" readOnly value={revealed.userPrincipalName} /><Button type="button" variant="outline" onClick={() => copy(revealed.userPrincipalName)}>Copy</Button></div>
       </div>
       <div className="grid gap-2">
-        <label htmlFor="mailbox-setup-password" className="text-sm font-medium">Temporary password</label>
+        <label htmlFor="mailbox-setup-password" className="text-sm font-medium">Password</label>
         <div className="flex gap-2"><Input id="mailbox-setup-password" readOnly type={showPassword ? "text" : "password"} value={revealed.password} /><Button type="button" variant="outline" onClick={() => setShowPassword((shown) => !shown)}>{showPassword ? "Hide" : "Show"}</Button><Button type="button" variant="outline" onClick={() => copy(revealed.password)}>Copy</Button></div>
       </div>
       <Button asChild className="w-fit"><a href={`https://outlook.office.com/mail/?login_hint=${encodeURIComponent(revealed.userPrincipalName)}`} rel="noopener noreferrer">Open Outlook on the web</a></Button>

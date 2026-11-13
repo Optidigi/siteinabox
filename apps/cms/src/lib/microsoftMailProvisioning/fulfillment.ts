@@ -202,7 +202,8 @@ async function fulfillMicrosoftMailOrderLocked(payload: Payload, order: Order, a
         await save({ data: { ...run.data, pax8OrderSubmissionState: "started" } })
         const providerOrder = await client.createOrder(input, { mock: false })
         if (!providerOrder.id) throw new Pax8IndeterminateWriteError("missing order identifier")
-        const request = !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo
+        // A paid info@ account replaces a legacy Cloudflare info@ forward (MX moves to Microsoft).
+        const request = !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo && !run.request.mailboxUsers.some(user => user.localPart === "info")
           ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo }
           : run.request
         await save({ state: "subscription_pending", completedSteps: ["provider_company", "subscription"], request,

@@ -40,6 +40,7 @@ export const MicrosoftMailServices: CollectionConfig = {
     { name: "currentPeriodEndsAt", type: "date" },
     { name: "renewalMode", type: "select", defaultValue: "manual_invoice", options: ["manual_invoice", "mollie"] },
     { name: "renewalData", type: "json", admin: { readOnly: true } },
+    { name: "signInPolicy", type: "json", admin: { readOnly: true, description: "Password-only sign-in (security defaults off) or customer-requested two-step sign-in. Managed by the sign-in policy reconciliation." } },
     { name: "issueCode", type: "text" },
   ],
 }

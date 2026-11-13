@@ -7,7 +7,7 @@ import { Button } from "@siteinabox/ui/components/button"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
-import { continueLiveMicrosoftMailProvisioningAction, repairCustomerApplicationAccess } from "../actions"
+import { continueLiveMicrosoftMailProvisioningAction, repairCustomerApplicationAccess, retryMailSignInPolicyStep } from "../actions"
 
 type LiveRunControlsProps = {
   runId: string
@@ -51,6 +51,11 @@ export function LiveRunControls(props: LiveRunControlsProps) {
       <input type="hidden" name="runId" value={props.runId} />
       <label className="flex items-start gap-2 text-sm"><Checkbox name="confirmGrantRepair" required /><span>I verified the partner group, roles and app permissions. Replace this app's customer grants and recheck access.</span></label>
       <Button type="submit" variant="outline" disabled={pending} className="w-fit">Repair application access</Button>
+    </form> : null}
+    {props.state === "manual_review" && /^SIGN_IN_/.test(props.issueCode ?? "") ? <form action={async (formData) => { setMessage(null); startTransition(async () => { try { await retryMailSignInPolicyStep(formData); router.refresh() } catch { setMessage("The sign-in step could not be resumed. Review the run.") } }) }} className="grid gap-3">
+      <input type="hidden" name="runId" value={props.runId} />
+      <label className="flex items-start gap-2 text-sm"><Checkbox name="confirmSignInRetry" required /><span>I fixed the cause (Security Administrator delegation, app permission or consent). Recheck and continue the sign-in step.</span></label>
+      <Button type="submit" variant="outline" disabled={pending} className="w-fit">Retry sign-in step</Button>
     </form> : null}
     {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
   </div>

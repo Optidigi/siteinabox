@@ -15,8 +15,8 @@ export function microsoftMailboxReadyTemplate(input: {
   const button = renderEmailButton(english ? "View sign-in details" : "Bekijk inloggegevens", input.setupUrl)
   const mailboxLabel = english ? "Mailbox" : "Mailbox"
   const notice = english
-    ? "This one-time link expires in 48 hours and can be opened once. Siteinabox will never email your temporary password directly."
-    : "Deze eenmalige link verloopt na 48 uur en kan één keer worden geopend. Siteinabox mailt je tijdelijke wachtwoord niet rechtstreeks."
+    ? "This one-time link expires in 48 hours and can be opened once. Siteinabox will never email your password directly."
+    : "Deze eenmalige link verloopt na 48 uur en kan één keer worden geopend. Siteinabox mailt je wachtwoord nooit rechtstreeks."
   return {
     subject,
     html: renderEmailLayout({

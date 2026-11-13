@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-[ "$(go env GOVERSION)" = go1.27.3 ]
+[ "$(go env GOVERSION)" = go1.27.4 ]
 [ "$(go env GOOS)/$(go env GOARCH)" = linux/amd64 ]
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

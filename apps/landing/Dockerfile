@@ -31,7 +31,7 @@ RUN POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN} POSTHOG_PUBLIC_HOST=${POSTHOG
 
 FROM nginx:${NGINX_VERSION}
 # Patch affected base-image libraries without changing Nginx itself.
-RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 curl=8.23.0-r0 libcurl=8.23.0-r0 libexpat=2.10.0-r0
+RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0 curl=8.23.0-r0 libcurl=8.23.0-r0 libexpat=2.10.0-r0 libxslt=1.1.43-r4
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY apps/landing/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/landing/dist /usr/share/nginx/html

@@ -3,7 +3,7 @@ import { requireMailDomainEnabled } from "@/lib/microsoftMailProvisioning/rollou
 import { requireLiveMailWritesAllowed } from "@/lib/microsoftMailProvisioning/writeGate"
 import { randomUUID } from "node:crypto"
 import { createMicrosoftMailLiveClients } from "@/lib/microsoftMailProvisioning/livePorts"
-import { MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, MicrosoftApiError } from "@/lib/microsoftMailProvisioning/microsoft"
+import { MICROSOFT_MAIL_APPLICATION_GRANT_VERSION, MicrosoftApiError, mailSignInGraphScopes } from "@/lib/microsoftMailProvisioning/microsoft"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
@@ -19,6 +19,8 @@ import { createMicrosoftMailProvisioningMockPorts } from "@/lib/microsoftMailPro
 import { PayloadMicrosoftMailProvisioningStore } from "@/lib/microsoftMailProvisioning/payloadStore"
 import { startMicrosoftMailProvisioning, type MicrosoftMailProvisioningRun } from "@/lib/microsoftMailProvisioning/workflow"
 import { createPax8MailClient } from "@/lib/microsoftMailProvisioning/pax8Preflight"
+import { readSignInPolicy, requestSignInMode } from "@/lib/microsoftMailProvisioning/signInPolicy"
+import { reconcileMicrosoftMailSignInPolicies } from "@/lib/microsoftMailProvisioning/signInPolicyReconcile"
 
 const operatorFromRequest = async () => {
   const payload = await getPayload({ config })
@@ -161,7 +163,7 @@ export async function reconcilePax8EmailOrder(formData: FormData) {
     throw new Error("Supply the existing provider order ID before resuming an uncertain purchase.")
   }
   await store.update(run.id, { data, state: providerOrderId ? "subscription_pending" : "tenant_pending", issueCode: null,
-    request: !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo } : run.request,
+    request: !run.request.infoSharedMailbox && !run.request.infoAliasTarget && quote.legacyInfoForwardTo && !run.request.mailboxUsers.some(user => user.localPart === "info") ? { ...run.request, retainInfoForward: true, infoForwardTo: quote.legacyInfoForwardTo } : run.request,
     completedSteps: [...new Set([...run.completedSteps, "provider_company" as const, ...(providerOrderId ? ["subscription" as const] : [])])], updatedAt: new Date().toISOString() })
   await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { pax8CompanyId: company.id, status: "provisioning" }, overrideAccess: true, context: mailServiceContext })
   revalidatePath(`/operations/microsoft-mail/${run.id}`)
@@ -184,7 +186,8 @@ export async function repairCustomerApplicationAccess(formData: FormData) {
     try {
       try { await microsoft.revokeCustomerApplicationConsent(String(run.data.customerTenantId)) }
       catch (error) { if (!(error instanceof MicrosoftApiError && error.status === 404)) throw error }
-      await microsoft.consentCustomerApplication(String(run.data.customerTenantId), requestId)
+      // Keep the sign-in extension: a repair must not silently drop password-only sign-in authority.
+      await microsoft.consentCustomerApplication(String(run.data.customerTenantId), requestId, undefined, run.data.signInGrantVersion ? mailSignInGraphScopes : [])
       const stepStates = run.data.providerStepStates && typeof run.data.providerStepStates === "object" ? run.data.providerStepStates : {}
       await store.update(run.id, { state: "consent_pending", issueCode: "PARTNER_APP_CONSENT_PROPAGATING", completedSteps: run.completedSteps.filter(step => step !== "application_consent"),
         data: { ...data, grantRepairState: "submitted", appConsentVersion: null, appConsentVerified: false, appConsentSubmittedVersion: MICROSOFT_MAIL_APPLICATION_GRANT_VERSION,
@@ -192,6 +195,49 @@ export async function repairCustomerApplicationAccess(formData: FormData) {
     } catch {
       await store.update(run.id, { state: "manual_review", issueCode: "APPLICATION_GRANT_REPAIR_RECONCILIATION_REQUIRED", data, updatedAt: new Date().toISOString() })
     }
+    revalidatePath(`/operations/microsoft-mail/${run.id}`)
+  })
+}
+
+/**
+ * Re-authorizes the service's current sign-in mode once (e.g. after Microsoft or an
+ * administrator changed security defaults outside Siteinabox), then applies it.
+ */
+export async function reapplyMailSignInPolicy(formData: FormData) {
+  const { payload } = await operatorFromRequest()
+  requireLiveMailWritesAllowed()
+  const serviceId = Number(formData.get("serviceId"))
+  if (!Number.isSafeInteger(serviceId) || serviceId < 1 || formData.get("confirmSignInReapply") !== "on") throw new Error("Confirm the sign-in setting for this customer.")
+  const selected = await payload.findByID({ collection: "microsoft-mail-services", id: serviceId, depth: 0, overrideAccess: true })
+  const tenantId = Number(relationshipId(selected.tenant))
+  await withCommerceOrderLock(payload, `mail-service:${tenantId}`, async () => {
+    const service = await payload.findByID({ collection: "microsoft-mail-services", id: serviceId, depth: 0, overrideAccess: true })
+    const policy = readSignInPolicy(service.signInPolicy, service.createdAt)
+    await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { signInPolicy: requestSignInMode(policy, policy.desired, "operator", new Date()) }, overrideAccess: true, context: mailServiceContext })
+  })
+  await reconcileMicrosoftMailSignInPolicies(payload, new Date(), { serviceId })
+  revalidatePath("/operations/microsoft-mail")
+}
+
+/**
+ * Resumes a run stopped in the `sign_in_policy` step after the operator fixed the cause
+ * (delegation, app permission or consent). The step re-verifies before any write; an
+ * open grant journal is kept and given a fresh verification window, never replayed blindly.
+ */
+export async function retryMailSignInPolicyStep(formData: FormData) {
+  const { payload, operator } = await operatorFromRequest()
+  return withLockedMailRun(payload, Number(formData.get("runId")), async (run, store) => {
+    if (formData.get("confirmSignInRetry") !== "on" || run.state !== "manual_review" || !/^SIGN_IN_[A-Z0-9_]+$/.test(run.issueCode ?? "") || !run.data.commerceOrderId) throw new Error("This run is not stopped in the sign-in step.")
+    requireMailDomainEnabled(run.domain)
+    requireLiveMailWritesAllowed()
+    const stepStates = run.data.providerStepStates && typeof run.data.providerStepStates === "object" ? run.data.providerStepStates : {}
+    const journal = run.data.signInGrantUpgrade && typeof run.data.signInGrantUpgrade === "object" ? run.data.signInGrantUpgrade as Record<string, unknown> : null
+    const now = new Date().toISOString()
+    await store.update(run.id, { state: "consent_pending", issueCode: null, currentStep: "sign_in_policy",
+      data: { ...run.data, providerStepStates: { ...stepStates, sign_in_policy: "waiting" }, signInPolicyDeniedSince: null, nextCheckAt: now,
+        signInGrantUpgrade: journal?.next === "verify" ? { ...journal, submittedAt: now } : journal,
+        signInStepRetries: [...(Array.isArray(run.data.signInStepRetries) ? run.data.signInStepRetries : []), { by: operator.email, at: now, issueCode: run.issueCode }].slice(-10) },
+      updatedAt: now })
     revalidatePath(`/operations/microsoft-mail/${run.id}`)
   })
 }

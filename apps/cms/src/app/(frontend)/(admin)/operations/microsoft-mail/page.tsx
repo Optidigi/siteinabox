@@ -10,6 +10,8 @@ import config from "@/payload.config"
 import { ProvisionMicrosoftMailForm } from "./ProvisionMicrosoftMailForm"
 import Link from "next/link"
 import { Button } from "@siteinabox/ui/components/button"
+import { readSignInPolicy } from "@/lib/microsoftMailProvisioning/signInPolicy"
+import { reapplyMailSignInPolicy } from "./actions"
 
 export const dynamic = "force-dynamic"
 
@@ -24,6 +26,7 @@ export default async function MicrosoftMailOperationsPage({ searchParams }: {
     payload.find({ collection: "tenants", limit: 250, depth: 0, sort: "name", overrideAccess: true }),
     payload.find({ collection: "microsoft-mail-provisioning-runs", limit: 12, depth: 0, sort: "-updatedAt", overrideAccess: true }),
   ])
+  const services = await payload.find({ collection: "microsoft-mail-services", where: { status: { in: ["active", "attention"] } }, limit: 100, depth: 0, sort: "domain", overrideAccess: true })
   const tenantOptions = tenants.docs.map((tenant) => ({ id: String(tenant.id), name: tenant.name, domain: tenant.domain }))
   let initialRun: { id: string; request: MicrosoftMailProvisioningRequest; data: Record<string, unknown> } | undefined
   if (requestedId) {
@@ -48,6 +51,22 @@ export default async function MicrosoftMailOperationsPage({ searchParams }: {
       <ul className="grid gap-1 sm:grid-cols-2">{readiness.items.map((item) => <li key={item.key} className="flex items-start gap-2"><Badge variant={item.ready ? "default" : "destructive"}>{item.ready ? "Ready" : "Missing"}</Badge><span><strong>{item.key}</strong>{item.ready ? "" : ` — ${item.requiredSettings.join(", ")}`}{item.note ? <span className="block text-muted-foreground">{item.note}</span> : null}</span></li>)}</ul>
     </section>
     <details className="rounded-base border p-4"><summary>Local mock simulator</summary><ProvisionMicrosoftMailForm tenants={tenantOptions} initialRun={initialRun} liveOrdersEnabled={false} /></details>
+    <section className="grid gap-3">
+      <h2 className="text-lg font-semibold">Sign-in settings</h2>
+      <p className="text-sm text-muted-foreground">Password-only sign-in switches the customer tenant&apos;s security defaults off; two-step sign-in switches them on. Changes made outside Siteinabox are reported here and never reverted automatically.</p>
+      {services.docs.length === 0 ? <p className="rounded-base border p-4 text-sm text-muted-foreground">No active email services.</p> : <div className="overflow-x-auto rounded-base border-2 border-border">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-muted/30"><tr><th className="px-4 py-3">Domain</th><th className="px-4 py-3">Requested</th><th className="px-4 py-3">Security defaults</th><th className="px-4 py-3">Issue</th><th className="px-4 py-3">Action</th></tr></thead>
+          <tbody>{services.docs.map((service) => { const policy = readSignInPolicy(service.signInPolicy, service.createdAt); return <tr className="border-b last:border-0" key={service.id}>
+            <td className="px-4 py-3 font-medium">{service.domain}</td>
+            <td className="px-4 py-3">{policy.desired === "two_step" ? "Two-step" : "Password-only"} · {policy.desiredBy}</td>
+            <td className="px-4 py-3"><Badge variant="outline">{policy.securityDefaults}</Badge></td>
+            <td className="px-4 py-3">{policy.issueCode ?? "—"}</td>
+            <td className="px-4 py-3">{policy.issueCode === "SIGN_IN_POLICY_CHANGED_OUTSIDE_SITEINABOX" ? <form action={reapplyMailSignInPolicy} className="flex flex-wrap items-center gap-2"><input type="hidden" name="serviceId" value={service.id} /><label className="flex items-center gap-1"><input type="checkbox" name="confirmSignInReapply" required /> Reviewed</label><Button type="submit" variant="outline" size="sm">Re-apply</Button></form> : null}</td>
+          </tr> })}</tbody>
+        </table>
+      </div>}
+    </section>
     <section className="grid gap-3">
       <h2 className="text-lg font-semibold">Recent provisioning runs</h2>
       {runs.docs.length === 0 ? <p className="rounded-base border p-4 text-sm text-muted-foreground">No Microsoft mail runs yet.</p> : <div className="overflow-x-auto rounded-base border-2 border-border">

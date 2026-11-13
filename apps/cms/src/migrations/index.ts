@@ -151,6 +151,7 @@ import * as migration_20261026_130054_microsoft_mail_provisioning_run_leases fro
 import * as migration_20261026_185822_microsoft_mail_paid_orders from './20261026_185822_microsoft_mail_paid_orders';
 import * as migration_20261026_190140_mail_workspace_defaults from './20261026_190140_mail_workspace_defaults';
 import * as migration_20261029_224217_external_mail_payment_authorization from './20261029_224217_external_mail_payment_authorization';
+import * as migration_20261113_175014_mail_sign_in_policy from './20261113_175014_mail_sign_in_policy';
 
 export const migrations = [
   {
@@ -916,6 +917,11 @@ export const migrations = [
   {
     up: migration_20261029_224217_external_mail_payment_authorization.up,
     down: migration_20261029_224217_external_mail_payment_authorization.down,
-    name: '20261029_224217_external_mail_payment_authorization'
+    name: '20261029_224217_external_mail_payment_authorization',
+  },
+  {
+    up: migration_20261113_175014_mail_sign_in_policy.up,
+    down: migration_20261113_175014_mail_sign_in_policy.down,
+    name: '20261113_175014_mail_sign_in_policy'
   },
 ];

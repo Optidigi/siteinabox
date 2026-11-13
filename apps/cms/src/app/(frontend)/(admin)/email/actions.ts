@@ -19,6 +19,8 @@ import { mailRenewalRequest } from "@/lib/microsoftMailProvisioning/renewalReque
 import { relationshipId } from "@/lib/relationshipId"
 import { consumeMicrosoftMailSetupCredential } from "@/lib/microsoftMailProvisioning/setupTokenStore"
 import { decryptMicrosoftMailSetupCredential } from "@/lib/microsoftMailProvisioning/setupCredentialCrypto"
+import { readSignInPolicy, requestSignInMode } from "@/lib/microsoftMailProvisioning/signInPolicy"
+import { reconcileMicrosoftMailSignInPolicies } from "@/lib/microsoftMailProvisioning/signInPolicyReconcile"
 
 const mcaDocumentUrl = "https://aka.ms/customeragreement"
 const consentCopyVersion = "siteinabox-m365-mail-consent-2026-10-26-v1"
@@ -95,10 +97,11 @@ export async function submitCustomerMicrosoftMailRequest(
       },
     },
     mailboxUsers,
-    infoSharedMailbox: formData.get("infoSharedMailbox") === "on",
+    // Shared mailboxes are no longer sold; extra inboxes such as info@ are paid accounts.
     retainInfoForward: false,
     infoForwardTo: "",
-    infoAliasTarget: String(formData.get("infoAliasTarget") ?? "").trim().toLowerCase(),
+    // Aliases and shared inboxes are not offered; customers manage those in Outlook themselves.
+    infoAliasTarget: "",
   })
   if (!parsed.ok) return { ok: false, message: parsed.issues.map((issue) => issue.message).join(" ") }
   const prepared = await withCommerceOrderLock<CustomerMailRequestActionState>(payload, `mail-service:${ctx.tenant.id}`, async () => {
@@ -252,4 +255,30 @@ export async function revealCustomerMailboxCredential(input: { tenantId: number;
   const password = decryptMicrosoftMailSetupCredential(claimed.encryptedPassword, encryptionKey)
   payload.logger.info({ event: "microsoft_mail_setup_credential_revealed", tenantId: ctx.tenant.id, runId: input.runId, userPrincipalName: claimed.userPrincipalName, actorId: user.id, actorRole: user.role })
   return { ok: true as const, userPrincipalName: claimed.userPrincipalName, password }
+}
+
+/**
+ * Two-step sign-in is a tenant-wide Microsoft setting (security defaults): it applies to
+ * every mailbox of this customer. The request is recorded here and applied by the sign-in
+ * reconciliation, which also confirms it with Microsoft.
+ */
+export async function requestCustomerMailSignInMode(formData: FormData) {
+  const { ctx, basePath } = await requireMailWorkspace(formData.get("tenantId"))
+  if (ctx.mode !== "tenant" || ctx.tenant.status !== "active") throw new Error("Customer workspace required.")
+  const mode = formData.get("mode")
+  if (mode !== "two_step" && mode !== "password_only") throw new Error("Unsupported sign-in mode.")
+  const payload = await getPayload({ config })
+  const serviceId = await withCommerceOrderLock(payload, `mail-service:${ctx.tenant.id}`, async () => {
+    const service = await loadMailService(payload, ctx.tenant.id)
+    if (service.status !== "active") throw new Error("Email is not active.")
+    const policy = readSignInPolicy(service.signInPolicy, service.createdAt)
+    // Re-requesting the same mode is allowed while an issue is open (e.g. after an outside change).
+    if (policy.desired === mode && !policy.issueCode) return service.id
+    await payload.update({ collection: "microsoft-mail-services", id: service.id, data: { signInPolicy: requestSignInMode(policy, mode, "customer", new Date()) },
+      overrideAccess: true, context: { microsoftMailServiceMutation: true } })
+    return service.id
+  })
+  // Best effort: apply now; the scheduled reconciliation retries otherwise.
+  try { await reconcileMicrosoftMailSignInPolicies(payload, new Date(), { serviceId }) } catch { /* retried by the job */ }
+  revalidatePath(basePath)
 }

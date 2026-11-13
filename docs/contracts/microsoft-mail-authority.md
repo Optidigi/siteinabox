@@ -3,7 +3,8 @@
 ## Product requirement and implementation status
 
 The customer authorizes the service in Siteinabox. Their first Microsoft
-interaction is mailbox sign-in, password change and security registration.
+interaction is mailbox sign-in with the delivered password (password-only by
+default; see the provisioning contract).
 Routine customer admin approval and per-customer operator setup are not accepted
 completion conditions.
 
@@ -45,8 +46,16 @@ mutable display name. Missing identity configuration fails closed. The stored `m
   completed.
 
 The required workload roles are User Administrator, License Administrator,
-Domain Name Administrator, Exchange Administrator and Cloud Application
-Administrator (Application Administrator is an accepted alternative). PRA is
+Domain Name Administrator, Exchange Administrator, Cloud Application
+Administrator (Application Administrator is an accepted alternative) and
+Security Administrator. Security Administrator is needed to switch the tenant's
+security defaults for password-only sign-in; it is a broad role (it can change
+every security setting of the customer tenant) and was accepted as a product
+decision on 2026-11-13. The Graph scopes for that change
+(`Policy.Read.All`, `Policy.ReadWrite.SecurityDefaults`) are a separately
+versioned extension grant (`microsoft-mail-sign-in-grants-v1`) applied by the
+CMS, so the v2 grant catalogue and bootstrap job binding of resources stay
+unchanged. PRA is
 bootstrap authority; it is not treated as a substitute for that workload set.
 Global Reader remains useful diagnostic access, never Exchange write authority.
 

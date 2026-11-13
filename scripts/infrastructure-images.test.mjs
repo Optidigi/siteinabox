@@ -17,8 +17,8 @@ test("reviewed images have immutable publisher identities and the production arc
     assert.ok(image.platforms.some(({ platform }) => platform.os === "linux" && platform.architecture === "amd64"))
   }
   assert.equal(infrastructure.nativeBuilder.buildOnly, true)
-  assert.equal(infrastructure.nativeBuilder.version, "1.27.3")
-  assert.match(infrastructure.nativeBuilder.reference, /^docker\.io\/library\/golang:1\.27\.3-alpine@sha256:[a-f0-9]{64}$/)
+  assert.equal(infrastructure.nativeBuilder.version, "1.27.4")
+  assert.match(infrastructure.nativeBuilder.reference, /^docker\.io\/library\/golang:1\.27\.4-alpine@sha256:[a-f0-9]{64}$/)
   assert(Date.now() - Date.parse(infrastructure.nativeBuilder.createdAt) >= 1440 * 60000)
   assert.equal(infrastructure.images.node.version, source(".nvmrc").trim())
   assert.equal(infrastructure.images.postgres.version.split(".")[0], "18", "No implicit database-major upgrade")
