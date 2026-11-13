@@ -329,9 +329,10 @@ for the product decision and its security trade-off.
    change the partner tenant's own security defaults. Without the declared
    permissions Partner Center rejects the customer grant upgrade
    (`SIGN_IN_GRANT_UPGRADE_REJECTED_V2_RESTORED`).
-2. Add **Security Administrator** to `MICROSOFT_GDAP_ROLE_DEFINITION_IDS`
-   (`194ae4cb-b126-40b2-bd5b-6091b380977d`) for manually requested
-   relationships. Automatic runs use the contract role list, which now includes it.
+2. No environment change is needed: GDAP requests always include the contract
+   role list, which now contains **Security Administrator**
+   (`194ae4cb-b126-40b2-bd5b-6091b380977d`), in addition to
+   `MICROSOFT_GDAP_ROLE_DEFINITION_IDS`.
 
 **How a customer tenant gets there:** Security Administrator is part of the
 required mail roles. A delegation without it is `not_ready`, so the existing
