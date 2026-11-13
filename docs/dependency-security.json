@@ -1322,26 +1322,6 @@
     },
     {
       "scope": "image:postgres",
-      "id": "CVE-2025-10911",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "2223259d190f5dfa73466cf74d1246dbae89248a283700b5d51690c13cf1d719",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2025-10911). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2026-12-10T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:postgres",
       "id": "CVE-2026-107364",
       "package": "krb5-libs",
       "version": "1.22.2-r1",
@@ -1682,26 +1662,6 @@
     },
     {
       "scope": "image:postgres",
-      "id": "CVE-2026-125350",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "unknown",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "aeebccc47432f349c995841ab8b5dad6f5d01d83762e110d0229ecb43ef3194a",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-125350). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:postgres",
       "id": "CVE-2026-40355",
       "package": "krb5-libs",
       "version": "1.22.2-r1",
@@ -1772,126 +1732,6 @@
       "factsHash": "1a59d5c23c162fb286ef63299fedd9ef2027b90f4aedc67408ed9416ad3afb4d",
       "state": "under_investigation",
       "reason": "New 2026-11-10 exact-image scanner finding in krb5-libs 1.22.2-r1 (CVE-2026-71200). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:postgres",
-      "id": "CVE-2026-87636",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-87636). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:postgres",
-      "id": "CVE-2026-9947",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-9947). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:site",
-      "id": "CVE-2025-10911",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "moderate",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "2223259d190f5dfa73466cf74d1246dbae89248a283700b5d51690c13cf1d719",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2025-10911). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2026-12-10T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:site",
-      "id": "CVE-2026-125350",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "unknown",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "aeebccc47432f349c995841ab8b5dad6f5d01d83762e110d0229ecb43ef3194a",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-125350). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:site",
-      "id": "CVE-2026-87636",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-87636). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
-      "reviewOwner": "Optidigi security maintainer",
-      "reviewedAt": "2026-11-10T19:56:07.397Z",
-      "deadline": "2027-02-08T19:56:07.397Z",
-      "issue": "https://github.com/Optidigi/siteinabox/issues/169",
-      "sources": [
-        "scanner-release"
-      ]
-    },
-    {
-      "scope": "image:site",
-      "id": "CVE-2026-9947",
-      "package": "libxslt",
-      "version": "1.1.43-r3",
-      "severity": "high",
-      "paths": [
-        "os-packages"
-      ],
-      "factsHash": "95940b94c3166430e66035228fee3df4f64b38de4955f3af0e224e67cfc0f4df",
-      "state": "under_investigation",
-      "reason": "New 2026-11-10 exact-image scanner finding in libxslt 1.1.43-r3 (CVE-2026-9947). Retained for base-image refresh/remediation; no absence-of-exploitability claim.",
       "reviewOwner": "Optidigi security maintainer",
       "reviewedAt": "2026-11-10T19:56:07.397Z",
       "deadline": "2027-02-08T19:56:07.397Z",
